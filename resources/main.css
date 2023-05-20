@@ -1,0 +1,8 @@
+body {
+	background-color: transparent;
+}
+
+#errorMessage {
+	margin-top: 20px;
+	color: rgba(255, 0, 0, 0.687);
+}

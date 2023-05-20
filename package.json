@@ -1,0 +1,104 @@
+{
+  "name": "query-json-lite",
+  "displayName": "Query JSON - lite",
+  "description": "Visual Studio Code extension harnessing JSXPath to query JSON files",
+  "version": "0.0.1",
+  "icon": "resources/QJson-158.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Quang-Nhan/query-json-lite"
+  },
+  "author": "Quang-Nhan",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.77.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "query-json-lite.output",
+        "title": "Output...",
+        "icon":  "$(output)"
+      },
+      {
+        "command": "query-json-lite.copy",
+        "title": "Copy value"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "query-json-lite",
+          "title": "Query JSON",
+          "icon": "resources/QJson-24.png"
+        }
+      ]
+    },
+    "views": {
+      "query-json-lite": [
+        {
+					"type": "webview",
+					"id": "query-json-lite.input",
+					"name": "query"
+				},
+        {
+          "type":"tree",
+          "id": "query-json-lite.result",
+          "name": "query result"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "query-json-lite.output",
+          "when": "view === query-json-lite.result",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "query-json-lite.copy",
+          "when": "view === query-json-lite.result"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.77.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.39.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.4",
+    "webpack": "^5.81.0",
+    "webpack-cli": "^5.0.2"
+  },
+  "dependencies": {
+    "jsxpath": "^1.1.1"
+  }
+}
