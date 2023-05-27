@@ -1,6 +1,8 @@
 import { KEYS, tNode, tNodesState } from 'jsxpath';
 import * as vscode from 'vscode';
 
+let idList: any[] = [];
+
 export class NodeItem extends vscode.TreeItem {
 	constructor(
 	  public readonly label: string,
@@ -15,6 +17,7 @@ export class NodeItem extends vscode.TreeItem {
 	  super(label, collapsibleState);
 	  this.description = String(this.getDisplayValue(this.label, this.value, this.actualValue));
 	  this.tooltip = `${this.label}: ${this.description}`;
+    idList.push(this.id);
 	}
 
   private getDisplayValue(label:string, value: string, actualValue?: any) {
@@ -39,6 +42,7 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
   nodesValue: tNode[] = [];
   nodes: tNodesState['nodes']['byId'] = {};
   value: any;
+  id = -2;
   constructor() {}
 
   public update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any }) {
@@ -64,7 +68,16 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
         if (currentNode[KEYS.valueType] === 'array') {
           label = String(child[KEYS.arrayPosition]);
         }
-        return new NodeItem(label, child[KEYS.value], child[KEYS.id]);
+        
+        let childId;
+        if (idList.includes(child[KEYS.id])) {
+          childId = this.id--;
+          this.nodes[childId] = child;
+        } else {
+          childId = child[KEYS.id];
+        }
+
+        return new NodeItem(label, child[KEYS.value], childId);
       }));
     } else if (this.nodesValue.length) {
       return Promise.resolve(this.nodesValue.map((node, i) => {

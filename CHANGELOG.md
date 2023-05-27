@@ -1,9 +1,17 @@
 # Change Log
 
-All notable changes to the "xpath-on-json" extension will be documented in this file.
+## unreleased
+- navigate to the JSON file line when clicking on the query result value
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## v0.0.2 (2023-05-27)
+---
+- Bump JSXPath to v1.1.2
+- Fixed getting parent node
+- Fixed error "element with id X is already registered" 
 
-## [Unreleased]
-
-- Initial release
+## v0.0.1 (2023-05-19) - initial release
+---
+- Uses JSXPath v1.1.1
+- Query json document on an opened JSON file
+- Review the query result in a new JSON file
+- Perfom built in JSXPath functions
