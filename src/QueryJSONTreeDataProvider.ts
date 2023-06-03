@@ -1,15 +1,22 @@
 import { KEYS, tNode, tNodesState } from 'jsxpath';
 import * as vscode from 'vscode';
+import { tNodes } from './GoTo';
 
 let idList: any[] = [];
 
 export class NodeItem extends vscode.TreeItem {
+  command?: vscode.Command | undefined = {
+    command: 'query-json-lite.goto',
+    title: 'Goto',
+    arguments: [this.nodes, this.document]
+  };
 	constructor(
 	  public readonly label: string,
 	  private value: string,
     public id: string,
-    private actualValue?: any,
-    private arrayPosition?: number
+    private nodes: tNodes,
+    private document?: vscode.TextDocument,
+    private actualValue?: any
 	) {
     const collapsibleState = ['{$o}', '{$a}'].includes(value) 
       ? vscode.TreeItemCollapsibleState.Collapsed 
@@ -42,13 +49,15 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
   nodesValue: tNode[] = [];
   nodes: tNodesState['nodes']['byId'] = {};
   value: any;
+  document: vscode.TextDocument | undefined;
   id = -2;
   constructor() {}
 
-  public update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any }) {
+  public update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any, document?: vscode.TextDocument }) {
     this.nodes = pathResult.nodes;
     this.nodesValue = pathResult.nodesValue;
     this.value = pathResult.value;
+    this.document = pathResult.document;
   }
 
   public getTreeItem(element: NodeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
@@ -64,7 +73,7 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
       const currentNode = this.nodes[Number(element.id)];
       return Promise.resolve(currentNode[KEYS.links].childrenIds.map((id: number) => {
         const child = this.nodes[id];
-        let label = this.getDisplaylabel(child[KEYS.name]);
+        let label = this.getDisplaylabel(child[KEYS.name], child[KEYS.arrayPosition]);
         if (currentNode[KEYS.valueType] === 'array') {
           label = String(child[KEYS.arrayPosition]);
         }
@@ -77,15 +86,30 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
           childId = child[KEYS.id];
         }
 
-        return new NodeItem(label, child[KEYS.value], childId);
+        const ancestors = child[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId]);
+        return new NodeItem(
+          label, 
+          child[KEYS.value], 
+          childId, 
+          {current: child, ancestors: ancestors}, 
+          this.document
+        );
       }));
     } else if (this.nodesValue.length) {
       return Promise.resolve(this.nodesValue.map((node, i) => {
-        return new NodeItem(this.getDisplaylabel(node[KEYS.name]), node[KEYS.value], node[KEYS.id], this.value[i]);
+        const ancestors = node[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId]);
+        return new NodeItem(
+          this.getDisplaylabel(node[KEYS.name], node[KEYS.arrayPosition]), 
+          node[KEYS.value], 
+          node[KEYS.id], 
+          {current: node, ancestors}, 
+          this.document,
+          this.value[i]
+        );
       }));
     } else {
       return Promise.resolve(
-        [new NodeItem('result', typeof this.value === 'string' ? this.value : String(this.value), '-1')]
+        [new NodeItem('result', typeof this.value === 'string' ? this.value : String(this.value), '-1', {current: undefined, ancestors: undefined}, this.document)]
       );
     }
   }
@@ -98,13 +122,22 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
     this._onDidChangeTreeData.fire();
   }
 
-  private getDisplaylabel(label: string) {
+  private getDisplaylabel(label: string, arrayPosition: number) {
     if (['{$o}', '{$ao}'].includes(label)) {
       return '{ }';
     }
     if (label === '{$a}') {
       return '[ ]';
     }
+
+    if (label === '_') {
+      return '';
+    }
+
+    if (!isNaN(arrayPosition) && ['{$v}'].includes(label)) {
+      return String(arrayPosition);
+    }
+
     return label;
   }
 }

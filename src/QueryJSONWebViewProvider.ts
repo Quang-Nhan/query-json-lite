@@ -35,9 +35,10 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
       switch (data.type) {
         case 'run':
           {
+            let document;
             if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
               this._evalJSONProvider?.update({
-                nodesValue: [], nodes: {}, value: []
+                nodesValue: [], nodes: {}, value: [], document
               });
               this._evalJSONProvider?.refresh();
               const message = !data.path.length ? 'Path is not provided' : 'Invalid file type. Was expecting JSON file';
@@ -49,7 +50,6 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
             let nodes;
             let performanceTime;
             let queryDone = false;
-
             try {
               webviewView.webview.postMessage({type: 'reset'});
               vscode.window.withProgress({
@@ -92,7 +92,9 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                 return p;
               });
 
-              const text = vscode.window.activeTextEditor?.document.getText();
+              document = vscode.window.activeTextEditor?.document;
+              const text = document?.getText();
+              
               const json = JSON.parse(text);
               const startTime = performance.now()
               runPath({
@@ -120,7 +122,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                   });
                 }
                 this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
-                this._evalJSONProvider?.update({ nodesValue, nodes, value });
+                this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
                 this._evalJSONProvider?.refresh();
               } else if(this._treeView) {
                 this._treeView.title = `Query Result: 0`;
