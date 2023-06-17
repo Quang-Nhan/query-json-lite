@@ -3,6 +3,12 @@
 ## unreleased
 - JSON file statistics
 
+## v0.1.1
+---
+- Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.4
+    - fixes root descendants xpath used as argument
+    - fixes boolean filter expressions
+
 ## v0.1.0
 ---
 - Navigate to the line in queried file
