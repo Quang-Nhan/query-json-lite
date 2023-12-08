@@ -142,6 +142,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'reset.css'));
     const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'vscode.css'));
     const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'main.css'));
+    const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
 
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
@@ -155,23 +156,34 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
               and only allow scripts that have a specific nonce.
               (See the 'webview-sample' extension sample for img-src content security policy examples)
           -->
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="${styleResetUri}" rel="stylesheet">
           <link href="${styleVSCodeUri}" rel="stylesheet">
           <link href="${styleMainUri}" rel="stylesheet">
+          <link href="${codiconsUri}" rel="stylesheet" />
           <title>Evaluate JSON</title>
       </head>
       <body>
-          <input class="path" type="text" placeholder="path"/>
+          <textarea wrap="soft" class="path" placeholder="path"></textarea>
           <button class="run">Run Path</button>
           <div id="errorMessage"></div>
+          <div>
+            <ul class="pathList">
+              <!--  Dnamically load pathListItems
+                  <li class="pathListItem">
+                    <div class="histPath">path</div>
+                    <div class="icon"><i class="codicon codicon-close"></i></div>
+                  </li>
+                  ...
+              --!>
+            </ul>
+          </div>
           <script nonce="${nonce}" src="${scriptUri}"></script>
       </body>
     </html>`
   }
 }
-
 
 function getNonce() {
   let text = '';

@@ -3,6 +3,12 @@
 ## unreleased
 - JSON file statistics
 
+
+## v0.2.0
+---
+- Change path from input to textarea field
+- Add path history (max 20 items)
+
 ## v0.1.1
 ---
 - Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.4

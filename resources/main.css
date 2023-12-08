@@ -4,5 +4,53 @@ body {
 
 #errorMessage {
 	margin-top: 20px;
-	color: rgba(255, 0, 0, 0.687);
+	color: var(--vscode-errorForeground)
+}
+
+ul {
+	list-style-type: none;
+	padding: 0;
+}
+
+.histPath {
+	padding: 10px;
+	cursor: pointer;
+	margin: 5px;
+	overflow-wrap: break-word;
+}
+
+.histPath:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+textarea {
+	resize: vertical;
+	min-height: 8em;
+}
+
+.pathListItem {
+	position: relative;
+}
+
+.icon {
+	position: absolute;
+	top: 5px;
+	padding: 3px;
+	font-size: 14px;
+	display: flex;
+	flex-direction: column;
+	text-align: center;
+	right: 20px;
+	border-radius: 50%;
+	background-color: none;
+}
+
+.icon:hover {
+	background-color: var(--vscode-badge-foreground);
+	color: var(--vscode-button-foreground);
+}
+
+.icon .codicon {
+	font-size: 20px;
+	/* padding-bottom: 2px; */
 }

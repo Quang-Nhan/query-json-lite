@@ -2,7 +2,7 @@
 
 Interactively query a JSON file using XPath like notation
 
----
+
 ## Features
 - [Query JSON object](#query-json-object)
 - [Query JSON array](#query-json-array)
@@ -10,6 +10,7 @@ Interactively query a JSON file using XPath like notation
 - [Built in Functions](#built-in-functions)
 - [Jump to line](#jump-to-line-v010)
 - [Result to new file](#result-to-new-file)
+- [Latest features in v0.2.0](#latest-feature-v020)
 
 ### Query JSON object
 - "/a/b" : *get the value of "b" by traversing from root to "a" to "b"*
@@ -26,7 +27,7 @@ Interactively query a JSON file using XPath like notation
 
 ---
 ### Filtering
-have- /incomes/\*[frequency = "monthly"]: *return incomes that have a frequency value of "monthly"*
+- /incomes/\*[frequency = "monthly"]: *return incomes that have a frequency value of "monthly"*
 
 ![Filter Incomes](resources/QueryFilter1.gif)
 - /expenses/\*[value > -400 and value < -200 ]: *return expenses where its' value is between -400 and -200*
@@ -51,7 +52,7 @@ Query JSON uses JSXPath behind the scene to perform path querying. Check out the
 ![Sum and Abs functions](resources/SumAbsFunctions.png)
 
 ---
-### Jump to line (v0.1.0)
+### Jump to line
 This feature makes use of vscode symbols to quickly jump to the line of the file that is related to the returned query result
 
 
@@ -69,3 +70,16 @@ Once the result is returned in the Query Result view, it can also be viewed in t
 ![Result in new preview file](resources/PreviewResult.gif)
 
 
+---
+### Latest Feature (v0.2.0)
+1. Changed input path from input text to a textarea field
+    - allows newline within paths
+    - this should improve readability for long paths
+
+    ![TextArea Path](resources/TextAreaPath.png)
+
+2. Added path history list (up to 20 paths)
+    - remembers previously used paths to quickly reuse them
+    - ability to delete unused paths
+
+    ![Path History](resources/PathHistory.png)
