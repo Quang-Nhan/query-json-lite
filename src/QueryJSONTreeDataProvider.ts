@@ -109,7 +109,7 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
       }));
     } else {
       return Promise.resolve(
-        [new NodeItem('result', typeof this.value === 'string' ? this.value : String(this.value), '-1', {current: undefined, ancestors: undefined}, this.document)]
+        [new NodeItem('result', typeof this.value === 'string' ? this.value : (this.value === undefined ? '' : String(this.value)), '-1', {current: undefined, ancestors: undefined}, this.document)]
       );
     }
   }

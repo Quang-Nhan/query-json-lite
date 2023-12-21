@@ -1,8 +1,11 @@
 # Change Log
 
-## unreleased
-- JSON file statistics
-
+## v0.3.0
+---
+- Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.5
+- Add the ability to star a path history (max 5 items)
+- Fixed error where nothing is returned when running in a new workspace (or fresh installs)
+- Fixed running path with full axis name expression (contains '::')
 
 ## v0.2.0
 ---

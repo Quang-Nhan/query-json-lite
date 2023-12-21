@@ -33,103 +33,107 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
     webviewView.webview.onDidReceiveMessage(data => {
       switch (data.type) {
-        case 'run':
-          {
-            let document;
-            if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
-              this._evalJSONProvider?.update({
-                nodesValue: [], nodes: {}, value: [], document
-              });
-              this._evalJSONProvider?.refresh();
-              const message = !data.path.length ? 'Path is not provided' : 'Invalid file type. Was expecting JSON file';
-              webviewView.webview.postMessage({type: 'error', message: message});
-              return;
-            }
-            let value: any[] = [];
-            let nodesValue;
-            let nodes;
-            let performanceTime;
-            let queryDone = false;
-            try {
-              webviewView.webview.postMessage({type: 'reset'});
-              vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: "Querying JSON in progress!",
-                cancellable: false
-              }, (progress, token) => {
-                token.onCancellationRequested(() => {
-                  console.log("User canceled the long running operation");
-                });
-
-                progress.report({ increment: 0 });
-
-                setTimeout(() => {
-                  progress.report({ increment: 10, message: "..." });
-                }, 100);
-
-                setTimeout(() => {
-                  progress.report({ increment: 20, message: "..." });
-                }, 200);
-
-                setTimeout(() => {
-                  progress.report({ increment: 30, message: "..." });
-                }, 300);
-
-                setTimeout(() => {
-                  progress.report({ increment: 40, message: "..." });
-                }, 400);
-
-                setTimeout(() => {
-                  progress.report({ increment: 40, message: "..." });
-                }, 500);
-
-                const p = new Promise<void>(resolve => {
-                  setInterval(() => {
-                    if (queryDone) resolve();
-                  }, 1000);
-                });
-
-                return p;
-              });
-
-              document = vscode.window.activeTextEditor?.document;
-              const text = document?.getText();
-              
-              const json = JSON.parse(text);
-              const startTime = performance.now()
-              runPath({
-                path: data.path,
-                then: (result) => {
-                  if (result.error) console.log(result.error);
-                  nodesValue = result.nodesValue || [];
-                  nodes = result.nodes;
-                  value = result.value;
-                  queryDone = true;
-                }
-              }, { json, outputOptions: { nodes: true } });
-              const endTime = performance.now();
-              performanceTime = endTime - startTime;
-            } catch (e) { 
-              queryDone = true; 
-              webviewView.webview.postMessage({type: 'error', message: (e as Error).message });
-            }
-
-            try {
-              if (nodesValue && nodes) {
-                if (!this._treeView) {
-                  this._treeView = vscode.window.createTreeView('query-json-lite.result', {
-                    treeDataProvider: this._evalJSONProvider
-                  });
-                }
-                this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
-                this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
-                this._evalJSONProvider?.refresh();
-              } else if(this._treeView) {
-                this._treeView.title = `Query Result: 0`;
-              }
-            } catch (e) { }
-            break;
+        case 'run': {
+          let document;
+          if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
+            this._evalJSONProvider?.update({
+              nodesValue: [], nodes: {}, value: [], document
+            });
+            this._evalJSONProvider?.refresh();
+            const message = !data.path.length ? 'Path is not provided' : 'Invalid file type. Was expecting JSON file';
+            webviewView.webview.postMessage({type: 'error', message: message});
+            webviewView.webview.postMessage({type: 'done'});
+            return;
           }
+          let value: any[] = [];
+          let nodesValue;
+          let nodes;
+          let performanceTime;
+          let queryDone = false;
+          try {
+            webviewView.webview.postMessage({type: 'reset'});
+            /* vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: "Querying JSON in progress!",
+              cancellable: false
+            }, (progress, token) => {
+              token.onCancellationRequested(() => {
+                console.log("User canceled the long running operation");
+              });
+
+              progress.report({ increment: 0 });
+
+              setTimeout(() => {
+                progress.report({ increment: 10, message: "..." });
+              }, 100);
+
+              setTimeout(() => {
+                progress.report({ increment: 20, message: "..." });
+              }, 200);
+
+              setTimeout(() => {
+                progress.report({ increment: 30, message: "..." });
+              }, 300);
+
+              setTimeout(() => {
+                progress.report({ increment: 40, message: "..." });
+              }, 400);
+
+              setTimeout(() => {
+                progress.report({ increment: 40, message: "..." });
+              }, 500);
+
+              const p = new Promise<void>(resolve => {
+                setInterval(() => {
+                  if (queryDone) resolve();
+                }, 1000);
+              });
+
+              return p;
+            }); */
+
+            document = vscode.window.activeTextEditor?.document;
+            const text = document?.getText();
+            
+            const json = JSON.parse(text);
+            const startTime = performance.now()
+            runPath({
+              path: data.path,
+              then: (result) => {
+                if (result.error) console.log(result.error);
+                nodesValue = result.nodesValue || [];
+                nodes = result.nodes;
+                value = result.value;
+                queryDone = true;
+              }
+            }, { json, outputOptions: { nodes: true } });
+            const endTime = performance.now();
+            performanceTime = endTime - startTime;
+          } catch (e) { 
+            queryDone = true; 
+            webviewView.webview.postMessage({type: 'error', message: (e as Error).message });
+          }
+
+          try {
+            if (nodesValue && nodes) {
+              if (!this._treeView) {
+                this._treeView = vscode.window.createTreeView('query-json-lite.result', {
+                  treeDataProvider: this._evalJSONProvider
+                });
+              }
+              this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
+              this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
+              this._evalJSONProvider?.refresh();
+              if (!value.length) {
+                webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
+              }
+            } else if(this._treeView) {
+              this._treeView.title = `Query Result: 0`;
+            }
+          } catch (e) { }
+          webviewView.webview.postMessage({type: 'done'});
+          break;
+        }
       }
     });
   }
@@ -149,7 +153,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
 
     return `<!DOCTYPE html>
       <html lang="en">
-      <head>
+        <head>
           <meta charset="UTF-8">
           <!--
               Use a content security policy to only allow loading styles from our extension directory,
@@ -163,25 +167,48 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
           <link href="${styleMainUri}" rel="stylesheet">
           <link href="${codiconsUri}" rel="stylesheet" />
           <title>Evaluate JSON</title>
-      </head>
-      <body>
-          <textarea wrap="soft" class="path" placeholder="path"></textarea>
-          <button class="run">Run Path</button>
-          <div id="errorMessage"></div>
-          <div>
+        </head>
+        <body>
+          <div class="sticky">
+            <textarea wrap="soft" class="path" placeholder="path"></textarea>
+            <button class="run">
+              Run Path 
+              <div class="icons">
+                <div class="icon"><i class="codicon codicon-sync" title="Syncing"></i></div>
+              </div>
+            </button>
+            <div id="feedback"></div>
+            </div>
+            <div class="spacer"></div>
+          <div id="pathsContainer">
+            <ul class="favPathList">
+              <!--
+                <li class="favPathListItem">
+                  <div class="histPath" data-path="testtest" data-fav="y">testtest</div>
+                  <div class="icons">
+                    <div class="icon"><i class="codicon codicon-star-full" title="un-favourite"></i></div>
+                  </div>
+                </li>
+                ...
+              --!>
+            </ul>
+            <div class="spacer"></div>
             <ul class="pathList">
               <!--  Dnamically load pathListItems
-                  <li class="pathListItem">
-                    <div class="histPath">path</div>
-                    <div class="icon"><i class="codicon codicon-close"></i></div>
-                  </li>
-                  ...
+                <li class="pathListItem">
+                  <div class="histPath">path</div>
+                  <div class="icons">
+                    <div class="icon"><i class="codicon codicon-star-empty" title="favourite"></i></div>
+                    <div class="icon"><i class="codicon codicon-close" title="remove"></i></div>
+                  </div>
+                </li>
+                ...
               --!>
             </ul>
           </div>
           <script nonce="${nonce}" src="${scriptUri}"></script>
-      </body>
-    </html>`
+        </body>
+      </html>`
   }
 }
 

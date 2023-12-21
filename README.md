@@ -10,7 +10,7 @@ Interactively query a JSON file using XPath like notation
 - [Built in Functions](#built-in-functions)
 - [Jump to line](#jump-to-line-v010)
 - [Result to new file](#result-to-new-file)
-- [Latest features in v0.2.0](#latest-feature-v020)
+- [Path History](#path-history)
 
 ### Query JSON object
 - "/a/b" : *get the value of "b" by traversing from root to "a" to "b"*
@@ -71,7 +71,7 @@ Once the result is returned in the Query Result view, it can also be viewed in t
 
 
 ---
-### Latest Feature (v0.2.0)
+### Path History
 1. Changed input path from input text to a textarea field
     - allows newline within paths
     - this should improve readability for long paths
@@ -83,3 +83,8 @@ Once the result is returned in the Query Result view, it can also be viewed in t
     - ability to delete unused paths
 
     ![Path History](resources/PathHistory.png)
+
+3. Path history can be starred and these will be shown at the top of the list (up 5 starred paths)
+    - star the path so it will not get dropped off in the path history
+
+    ![Favourite Path History](resources/FavPathHistory.png)

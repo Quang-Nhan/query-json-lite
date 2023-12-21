@@ -1,10 +1,30 @@
 body {
 	background-color: transparent;
+	overflow-y: auto;
 }
 
-#errorMessage {
+.sticky {
+	position: sticky;
+	top: 6px;
+	z-index: 100;
+	display: flex;
+	gap: 10px;
+	flex-direction: column;
+	background-color: var(--vscode-sideBar-background);
+}
+
+#feedback {
 	margin-top: 20px;
-	color: var(--vscode-errorForeground)
+	text-align: center;
+	min-height: 20px;
+}
+
+.error {
+	color: var(--vscode-errorForeground);
+}
+
+.warning {
+	color: var(--vscode-list-warningForeground);
 }
 
 ul {
@@ -12,7 +32,7 @@ ul {
 	padding: 0;
 }
 
-.histPath {
+.histPath, .favHistPath {
 	padding: 10px;
 	cursor: pointer;
 	margin: 5px;
@@ -23,29 +43,44 @@ ul {
 	background-color: var(--vscode-list-hoverBackground);
 }
 
+.favPathListItem .histPath:hover {
+	background-color: var(--vscode-list-filterMatchBackground);
+}
+
 textarea {
 	resize: vertical;
 	min-height: 8em;
+	margin-top: 0;
 }
 
-.pathListItem {
+.pathListItem, .favPathListItem {
 	position: relative;
 }
 
-.icon {
-	position: absolute;
+.icons {
 	top: 5px;
+	right: 20px;
+	position: absolute;
+	display: flex;
+	flex-direction: row;
+	text-align: center;
+}
+
+.icon {
 	padding: 3px;
 	font-size: 14px;
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	text-align: center;
-	right: 20px;
 	border-radius: 50%;
 	background-color: none;
 }
 
-.icon:hover {
+.icon:has(.codicon-star-full)  {
+	background-color: var(--vscode-list-activeSelectionBackground)
+}
+
+.icon:hover:not(.run .icon){
 	background-color: var(--vscode-badge-foreground);
 	color: var(--vscode-button-foreground);
 }
@@ -53,4 +88,44 @@ textarea {
 .icon .codicon {
 	font-size: 20px;
 	/* padding-bottom: 2px; */
+}
+
+.pathListItem .icons .icon .codicon-star-empty {
+	display: none
+}
+
+.pathListItem:hover .icons .icon .codicon-star-empty {
+	display: block
+}
+
+.spacer {
+	height: 20px;
+	position: sticky;
+	top: 0px;
+	background-color: var(--vscode-sideBar-background);
+	z-index: 50;
+}
+
+.run {
+	display: flex;
+	justify-content: center;
+	place-items: center;
+	position: relative;
+}
+
+.run:disabled {
+	background-color: var(--vscode-disabledForeground);
+}
+
+.run .icons {
+	top: 3px;
+}
+
+.spin {
+	animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+	0% {transform: rotate(0deg);}
+	100% {transform: rotate(360deg);}
 }
