@@ -1,24 +1,29 @@
 # Change Log
 
-## v0.3.0
+## v0.3.1 (2024-03-02)
+---
+- Fixed navigation to line to target the correct queried file and tab group
+    - if file is closed, navigate will open the queried file in the active tab group
+
+## v0.3.0 (2023-12-21)
 ---
 - Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.5
 - Add the ability to star a path history (max 5 items)
 - Fixed error where nothing is returned when running in a new workspace (or fresh installs)
 - Fixed running path with full axis name expression (contains '::')
 
-## v0.2.0
+## v0.2.0 (2023-09-12)
 ---
 - Change path from input to textarea field
 - Add path history (max 20 items)
 
-## v0.1.1
+## v0.1.1 (2023-06-17)
 ---
 - Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.4
     - fixes root descendants xpath used as argument
     - fixes boolean filter expressions
 
-## v0.1.0
+## v0.1.0 (2023-06-23)
 ---
 - Navigate to the line in queried file
 - Fixed unexpected label for array items

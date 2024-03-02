@@ -2,7 +2,7 @@
   "name": "query-json-lite",
   "displayName": "Query JSON - lite",
   "description": "Visual Studio Code extension harnessing JSXPath to query JSON files",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "icon": "resources/QJson-128.png",
   "repository": {
     "type": "git",

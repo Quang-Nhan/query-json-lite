@@ -39,7 +39,20 @@ const search = (symbols: vscode.DocumentSymbol[], nodes:tNodes) => {
 
 const goToSymbol = async (nodes: tNodes, document?: vscode.TextDocument) => {
   if (document) {
-    vscode.window.showTextDocument(document, 1, false).then(async (textEditor) => {
+    let viewColumn;
+    vscode.window.tabGroups.all.find(tabGroup => {
+      if (tabGroup.tabs.some(t => t.input && (t.input as vscode.TextDocument).uri?.fsPath === document.uri?.fsPath)) {
+        viewColumn = tabGroup.viewColumn;
+        return true;
+      }
+      return false;
+    });
+
+    if (!viewColumn) {
+      viewColumn = vscode.window.tabGroups.activeTabGroup.viewColumn
+    }
+    
+    vscode.window.showTextDocument(document, viewColumn, false).then(async (textEditor) => {
       const symbols = await getSymbols(document);
       const findSymbol = search(symbols, nodes);
       if (findSymbol && textEditor) {

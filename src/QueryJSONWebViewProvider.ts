@@ -121,7 +121,11 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                   treeDataProvider: this._evalJSONProvider
                 });
               }
+              // const now = (new Date());
+              // ${now.toLocaleString()
+              const fileNameSplitted = document?.fileName.split('/') || [];
               this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
+              this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
               this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
               this._evalJSONProvider?.refresh();
               if (!value.length) {

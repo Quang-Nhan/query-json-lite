@@ -71,20 +71,21 @@ Once the result is returned in the Query Result view, it can also be viewed in t
 
 
 ---
+### Query Path
+Changed input path from input text to a textarea field
+- allow newlines within paths
+- this should improve readability for long paths
+
+![TextArea Path](resources/TextAreaPath.png)
+
 ### Path History
-1. Changed input path from input text to a textarea field
-    - allows newline within paths
-    - this should improve readability for long paths
+Added path history list (up to 20 paths)
+- remembers previously used paths to quickly reuse them
+- ability to delete unused paths
 
-    ![TextArea Path](resources/TextAreaPath.png)
+![Path History](resources/PathHistory.png)
 
-2. Added path history list (up to 20 paths)
-    - remembers previously used paths to quickly reuse them
-    - ability to delete unused paths
+Path history can be starred and these will be shown at the top of the list (up to 5 starred paths)
+- star the path so it will not get dropped off in the path history
 
-    ![Path History](resources/PathHistory.png)
-
-3. Path history can be starred and these will be shown at the top of the list (up 5 starred paths)
-    - star the path so it will not get dropped off in the path history
-
-    ![Favourite Path History](resources/FavPathHistory.png)
+![Favourite Path History](resources/FavPathHistory.png)
