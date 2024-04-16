@@ -13,6 +13,7 @@ body {
 	font-weight: var(--vscode-font-weight);
 	font-family: var(--vscode-font-family);
 	background-color: var(--vscode-editor-background);
+	overflow-y: hidden;
 }
 
 ol,
@@ -75,7 +76,7 @@ button.secondary:hover {
 
 input:not([type='checkbox']),
 textarea {
-	display: block;
+	/* display: block; */
 	width: 100%;
 	border: none;
 	font-family: var(--vscode-font-family);

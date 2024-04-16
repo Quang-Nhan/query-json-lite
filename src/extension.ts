@@ -10,7 +10,7 @@ import { goto } from './GoTo';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	const treePovider = new QueryJSONTreeDataProvider();
-	const webviewProvider = new QueryJSONWebViewProvider(context.extensionUri, treePovider);
+	const webviewProvider = new QueryJSONWebViewProvider(context.extensionUri, treePovider, context.workspaceState);
 	
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(QueryJSONWebViewProvider.viewType, webviewProvider)

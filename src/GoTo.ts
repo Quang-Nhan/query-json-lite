@@ -57,8 +57,10 @@ const goToSymbol = async (nodes: tNodes, document?: vscode.TextDocument) => {
       const findSymbol = search(symbols, nodes);
       if (findSymbol && textEditor) {
         textEditor.revealRange(findSymbol.range, vscode.TextEditorRevealType.InCenter);
-        const position = new vscode.Position(findSymbol.range.start.line, findSymbol.range.start.line);
-        const selection = new vscode.Selection(position, position);
+        const startPosition = new vscode.Position(findSymbol.range.start.line, findSymbol.range.start.character);
+        const endPosition = new vscode.Position(findSymbol.range.end.line, findSymbol.range.end.character);
+        const selection = new vscode.Selection(startPosition, endPosition);
+        
         textEditor.selection = selection
       }
     });
