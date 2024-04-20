@@ -4,9 +4,14 @@
 - highlight all results in the queried file in opened queried JSON file
 - exclude directories/files in find mode
 ---
+## v0.4.1 (2024-04-20)
+- Improved Find tab/mode user experience
+- Fixed "remove" find file line item bug
+- Fixed directory lookup
+
 ## v0.4.0 (2024-04-17)
-- navigate to will now select the clicked symbol and its value in editor
-- find JSON files in directories feature (beta)
+- Navigate to will now select the clicked symbol and its value in editor
+- Find JSON files in directories feature (beta)
     - new *Find* tab/mode. *Query* tab/mode is used for existing functionalities
     - return only JSON files that yield results from given path expression
     - case insensitive file matching

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { QueryJSONTreeDataProvider } from './QueryJSONTreeDataProvider';
 import { performance } from 'perf_hooks';
 import { runPath, tRunPathResult } from 'jsxpath';
+import path = require('path');
 
 export default class EvaluateJSONProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'query-json-lite.input';
@@ -45,7 +46,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
               nodesValue: [], nodes: {}, value: [], document
             });
             this._evalJSONProvider?.refresh();
-            const message = !data.path.length ? 'Path is not provided' : 'Invalid file type. Was expecting JSON file';
+            const message = !data.path.length ? 'Path is not provided.' : 'Invalid file type. Was expecting JSON file.';
             webviewView.webview.postMessage({type: 'error', message: message});
             webviewView.webview.postMessage({type: 'done'});
             return;
@@ -97,7 +98,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
         };
         case 'search': {
           if (!data.path.length) {
-            webviewView.webview.postMessage({type: 'error', message: 'Path is not provided'});
+            webviewView.webview.postMessage({type: 'error', message: 'Path is not provided.'});
             webviewView.webview.postMessage({type: 'done'});
             return;
           }
@@ -110,11 +111,17 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
             this._cancelTokenSource = new vscode.CancellationTokenSource();
           }
           let total = 0;
+          let urisCount = 0;
           const pattern: string = getGlobPattern(data.searchFiles);
           (vscode.workspace.workspaceFolders || []).forEach((workspaceFolder, fileIndex) => {
             const relativePath = new vscode.RelativePattern(workspaceFolder, pattern)
             vscode.workspace.findFiles(relativePath, undefined, undefined , this._cancelTokenSource?.token)
               .then((uris) => {
+                urisCount += uris.length;
+                if ((vscode.workspace?.workspaceFolders?.length || 0)-1 === fileIndex && urisCount === 0) {
+                  webviewView.webview.postMessage({type: 'warning', message: 'No files found.'})
+                  webviewView.webview.postMessage({type: 'done'});
+                }
                 uris.forEach((uri, uriIndex) => {
                   vscode.workspace.fs.readFile(uri)
                     .then(value => {
@@ -125,14 +132,16 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                         this._runPath(cleanup(value.toString()), data.path, (runResult: tRunPathResult) => {
                           if (runResult.value.length) {
                             const workspaceUri = vscode.workspace.getWorkspaceFolder(uri);
-                            const splits = uri.fsPath.split('/');
+                            const splits = uri.fsPath.split(path.sep);
                             const fileName = splits[splits.length - 1];
+                            
                             total += value.length;
                             webviewView.webview.postMessage({
                               type: 'searchResponse',
                               workspaceName: workspaceUri?.name || '',
                               resultCount: runResult.value.length,
                               filePath: uri.path,
+                              relativePath: vscode.workspace.asRelativePath(uri, false),
                               queryPath: data.path,
                               fileName,
                             });
@@ -144,6 +153,9 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                     })
                     .then(() => {
                       if ((vscode.workspace?.workspaceFolders?.length || 0)-1 === fileIndex && uris.length - 1 === uriIndex) {
+                        if (total === 0) {
+                          webviewView.webview.postMessage({ type: 'warning', message: 'No files with matching path expression found.' });
+                        }
                         webviewView.webview.postMessage({type: 'done'});
                         // console.log('find done! Total found: ', total, ' Is user cancelled ? ', this._cancelTokenSource?.token.isCancellationRequested);
                       }
@@ -188,9 +200,8 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                         });
                       }
         
-                      const fileNameSplitted = data.filePath.split('/') || [];
                       this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
-                      this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
+                      this._treeView.description = `${data.workspaceName}/${data.relativePath}`;
                       this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
                       this._evalJSONProvider?.refresh();
                       if (!value.length) {
@@ -298,9 +309,13 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                 <!-- Dynamically create searchResultItems
                   <li class="searchResultWorkspaceItemList">
                     <div class="workspaceName" data-name="workspace">Workspace</div>
+                    <div class="icons">
+                      <div class="icon count" data-count="2323">12334</div>
+                    </div>
                     <ul class="workspaceGroupList">
-                      <li class="fileListItem">
+                      <li class="fileListItem" data-...>
                         <div class="fileName">test URI</div>
+                        <div class="relativePath"></div>
                         <div class="icons">
                           <div class="icon count" data-count="34">1000</div>
                           <div class="icon"><i class="codicon codicon-expand-all" title="expand"></i></div> 
@@ -389,7 +404,7 @@ function getGlobPattern(search: string) {
       return `**/${term}`;
     } else if (dotSplits.length === 1) {
       const caseInsensitiveTerm = getCaseInsensitiveTerm(term);
-      return `**/*${caseInsensitiveTerm}*/*.json,**/*${caseInsensitiveTerm}*.json`;
+      return `**/*${caseInsensitiveTerm}*/**/*.json,**/*${caseInsensitiveTerm}*.json`;
     } 
     return '';
   });

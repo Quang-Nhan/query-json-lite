@@ -2,7 +2,6 @@
 
 
 (function () {
- 
   const MAX_LIST_LENGTH = 20;
   const MAX_FAV_LIST_LENGTH = 5;
   const vscode = acquireVsCodeApi();
@@ -112,17 +111,19 @@
         div.className = 'workspaceName';
         div.dataset.name = name;
         div.textContent = name;
+        div.addEventListener('click', handlers.workspaceNameClicked)
         return div;
       },
-      fileName: (name, filePath, queryPath) => {
+      fileName: (name) => {
         const div = document.createElement('div');
         div.className = 'fileName';
-        div.dataset.name = name;
-        div.dataset.filePath = filePath;
-        div.datasetqueryPath = queryPath;
         div.textContent = name;
-
-        div.addEventListener('click', handlers.fileNameClicked);
+        return div;
+      },
+      relativePath: (relativePath) => {
+        const div = document.createElement('div');
+        div.className = 'relativePath';
+        div.textContent = relativePath;
         return div;
       },
       workspaceGroupList: () => {
@@ -130,9 +131,14 @@
         ul.className = 'workspaceGroupList';
         return ul;
       },
-      fileListItem: () => {
+      fileListItem: (name, filePath, queryPath, relativePath) => {
         const li = document.createElement('li');
         li.className = 'fileListItem';
+        li.dataset.name = name;
+        li.dataset.filePath = filePath;
+        li.dataset.queryPath = queryPath;
+        li.dataset.relativePath = relativePath;
+        li.addEventListener('click', handlers.fileListItemClicked);
         return li;
       },
       count: (count) => {
@@ -175,6 +181,26 @@
         li.appendChild(iconsDiv);
 
         favPathListDom.insertBefore(li, favPathListDom.firstChild);
+      },
+      fileListItem: (fileData) => {
+        const li = doms.create.fileListItem(fileData.fileName, fileData.filePath, fileData.queryPath, fileData.relativePath);
+        const fileNameDiv = doms.create.fileName(fileData.fileName);
+        const relativePath = doms.create.relativePath(fileData.relativePath);
+        
+        const iconsDiv = doms.create.icons();
+        const countDiv = doms.create.count(fileData.count);
+        const removeIcon = doms.create.icon();
+        const removeCodIcon = doms.create.codicon('codicon-close', handlers.removeSearchFileClicked);
+        
+        removeIcon.appendChild(removeCodIcon);
+        iconsDiv.appendChild(countDiv);
+        iconsDiv.appendChild(removeIcon);
+        li.appendChild(fileNameDiv);
+        li.appendChild(relativePath);
+        li.appendChild(iconsDiv);
+
+        li.title = fileData.relativePath;
+        return li;
       }
     },
     refresh: {
@@ -185,23 +211,24 @@
           const searchResultWorkspaceItemListDom = doms.create.searchResultWorkspaceItemList();
           const workspaceNameDom = doms.create.workspaceName(workspace);
           const workspaceGroupListDom = doms.create.workspaceGroupList();
+
+          let workspaceCount = 0;
           
           searchResultState[workspace].forEach(searchResult => {
-            const fileListItemDom = doms.create.fileListItem();
-            const fileNameDom = doms.create.fileName(searchResult.fileName, searchResult.filePath, searchResult.queryPath);
-            const iconsDom = doms.create.icons();
-            const countDom = doms.create.count(searchResult.count);
-            const removeIcon = doms.create.icon();
-            const removeCodIcon = doms.create.codicon('codicon-close', handlers.removeSearchFileClicked);
-            
-            removeIcon.appendChild(removeCodIcon);
-            iconsDom.appendChild(countDom);
-            iconsDom.appendChild(removeIcon);
-            fileListItemDom.appendChild(fileNameDom);
-            fileListItemDom.appendChild(iconsDom);
-            workspaceGroupListDom.append(fileListItemDom);
+            workspaceGroupListDom.append(doms.append.fileListItem(searchResult)); 
+            workspaceCount += searchResult.count;
           });
+
+          const workspaceIconsDom = doms.create.icons();
+          const workspaceCountDom = doms.create.count(workspaceCount);
+          const removeWorkspaceIconDom = doms.create.icon();
+          const removeWorkspaceCodIcon = doms.create.codicon('codicon-close', handlers.removeSearchWorkspaceClicked);
+          
+          removeWorkspaceIconDom.appendChild(removeWorkspaceCodIcon);
+          workspaceIconsDom.appendChild(workspaceCountDom);
+          workspaceIconsDom.appendChild(removeWorkspaceIconDom);
           searchResultWorkspaceItemListDom.appendChild(workspaceNameDom);
+          searchResultWorkspaceItemListDom.appendChild(workspaceIconsDom);
           searchResultWorkspaceItemListDom.appendChild(workspaceGroupListDom);
           newList.push(searchResultWorkspaceItemListDom);
         });
@@ -274,7 +301,7 @@
         const historyPaths = vscode.getState()?.historyPaths || [];
         const mode = vscode.getState()['mode']
         doms.feedback.update('reset');
-        
+
         if (mode === 'search') {
           cancelSearchIconDom.addEventListener('click', handlers.cancelFindRequest);
           if (cancelSearchIconDom.classList.contains('invisible')) {
@@ -420,29 +447,36 @@
       document.getElementById('searchMode')?.classList.add('active');
       document.getElementById('defaultMode')?.classList.remove('active');
     },
-    fileNameClicked: (event) => {
+    workspaceNameClicked: (event) => {
+      const searchReusltWorkItemList = event.target.parentElement;
+      const workspaceGroupList = searchReusltWorkItemList.querySelector('.workspaceGroupList');
+      workspaceGroupList.classList.toggle('hide');
+    },
+    fileListItemClicked: (event) => {
+      document.querySelectorAll('.fileListItem').forEach(fileNameDiv => fileNameDiv.classList.toggle('selected', false));
+      document.querySelectorAll('.workspaceName').forEach(workspaceName => workspaceName.classList.toggle('selected', false));
       if (event.currentTarget.dataset.filePath.trim().length) {
+        event.currentTarget.classList.toggle('selected', true);
+        const workspaceNameDiv = event.currentTarget.closest('.searchResultWorkspaceItemList').querySelector('.workspaceName');
+        workspaceNameDiv.classList.toggle('selected', true);
         vscode.postMessage({
           type: 'display-search-item',
           filePath: event.currentTarget.dataset.filePath,
-          queryPath: event.currentTarget.datasetqueryPath
+          queryPath: event.currentTarget.dataset.queryPath,
+          relativePath: event.currentTarget.dataset.relativePath,
+          workspaceName: workspaceNameDiv.dataset.name
         });
       }
     },
     removeSearchFileClicked: (event) => {
+      event.stopPropagation();
       const state = vscode.getState();
-      const iconDiv = event.currentTarget.parentElement;
-      const iconsDiv = iconDiv.parentElement;
-      const li = iconsDiv.parentElement;
-      const fileNameDiv = li.querySelector('.fileName');
-
-      const workspaceGroupUl = li.parentElement;
-      const searchResultWorksplaceLi = workspaceGroupUl.parentElement;
+      const fileListItemDiv = event.currentTarget.closest('.fileListItem');
+      const searchResultWorksplaceLi = fileListItemDiv.closest('.searchResultWorkspaceItemList');
       const workspaceNameDiv = searchResultWorksplaceLi.querySelector('.workspaceName');
-      
 
       const workspaceName = workspaceNameDiv.dataset.name;
-      const filePath = fileNameDiv.dataset.path;
+      const filePath = fileListItemDiv.dataset.filePath;
       const filteredList = (state.searchResult[workspaceName] || []).filter(item => item.filePath !== filePath)
 
       // remove from state
@@ -451,6 +485,25 @@
         searchResult: {
           ...state.searchResult,
           [workspaceName]: filteredList.length ? filteredList : undefined
+        }
+      });
+
+      doms.refresh.searchResultList();
+    },
+    removeSearchWorkspaceClicked: (event) => {
+      const state = vscode.getState();
+      const iconDiv = event.currentTarget.parentElement;
+      const iconsDiv = iconDiv.parentElement;
+      const searchResultWorksplaceLi = iconsDiv.parentElement;
+      const workspaceNameDiv = searchResultWorksplaceLi.querySelector('.workspaceName');
+
+      const workspaceName = workspaceNameDiv.dataset.name;
+      const { [workspaceName]: _, ...searchResult } = state.searchResult;
+      
+      vscode.setState({
+        ...state,
+        searchResult: {
+          ...searchResult
         }
       });
 
@@ -495,6 +548,7 @@
         fileName: data.fileName,
         filePath: data.filePath,
         queryPath: data.queryPath,
+        relativePath: data.relativePath,
         count: data.resultCount
       });
 

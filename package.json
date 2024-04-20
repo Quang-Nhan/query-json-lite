@@ -2,7 +2,7 @@
   "name": "query-json-lite",
   "displayName": "Query JSON - lite",
   "description": "Query JSON file using XPath like expression",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "icon": "resources/QJson-128.png",
   "repository": {
     "type": "git",

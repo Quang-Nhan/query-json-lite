@@ -8,9 +8,11 @@ Interactively query a JSON file using XPath like notation
 - [Query JSON array](#query-json-array)
 - [Filtering](#filtering)
 - [Built in Functions](#built-in-functions)
-- [Jump to line](#jump-to-line-v010)
+- [Jump to line](#jump-to-line)
 - [Result to new file](#result-to-new-file)
 - [Path History](#path-history)
+- [Find Mode (beta)](#find-mode-beta-release)
+
 
 ### Query JSON object
 - "/a/b" : *get the value of "b" by traversing from root to "a" to "b"*
@@ -72,14 +74,12 @@ Once the result is returned in the Query Result view, it can also be viewed in t
 
 ---
 ### Query Path
-Changed input path from input text to a textarea field
-- allow newlines within paths
-- this should improve readability for long paths
+Supports multiline path expression
 
 ![TextArea Path](resources/TextAreaPath.png)
 
 ### Path History
-Added path history list (up to 20 paths)
+Saves a history of paths (up to 20)
 - remembers previously used paths to quickly reuse them
 - ability to delete unused paths
 
@@ -89,3 +89,18 @@ Path history can be starred and these will be shown at the top of the list (up t
 - star the path so it will not get dropped off in the path history
 
 ![Favourite Path History](resources/FavPathHistory.png)
+
+---
+### Find Mode (*beta release)
+Search through workspace folders for the given path expression
+- return files that matches the search term and the entered path expression
+- search term examples
+    - > search term: *file.json* - search for all directories for file.json
+    - > search term: *\*file\*.json* - search for all directory for files that contains "file" in their name
+    - > search term: *dir* - search for directories or json files that contains "dir" in their name 
+- search term is case insensitive
+- supports multi search terms separate by commas
+    - > search term: *file1.json,file2.json* - search for all directories for file1.json and file2.json files
+- note: path expression is not added in path history in find mode
+
+![Find Mode](resources/FindMode.png)
