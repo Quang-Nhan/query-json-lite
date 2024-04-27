@@ -51,6 +51,7 @@ textarea {
 	resize: vertical;
 	min-height: 8em;
 	margin-top: 0;
+	padding: 10px
 }
 
 .pathListItem, .favPathListItem, .fileListItem, .searchResultWorkspaceItemList {
@@ -81,7 +82,7 @@ textarea {
 	background-color: var(--vscode-list-activeSelectionBackground)
 }
 
-.icon:hover:not(.run .icon){
+.icon:hover:not(.run .icon, #cancel .icon){
 	background-color: var(--vscode-badge-foreground);
 	color: var(--vscode-button-foreground);
 }
@@ -107,14 +108,14 @@ textarea {
 	z-index: 50;
 }
 
-.run {
+.run, #cancel {
 	display: flex;
 	justify-content: center;
 	place-items: center;
 	position: relative;
 }
 
-.run:disabled {
+.run:disabled, #cancel:disabled {
 	background-color: var(--vscode-disabledForeground);
 }
 
@@ -132,7 +133,7 @@ textarea {
 }
 
 .hide {
-	display: none;
+	display: none !important;
 }
 
 .show {
@@ -158,10 +159,11 @@ textarea {
 	border-top: 2px solid transparent;
 }
 
-
-
-#search {
-	margin: 10px 0px;
+#searchTerm, #excludeTerm {
+	padding-left: 10px;
+	padding-right: 10px;
+	border-radius: 2px;
+	margin-bottom: 5px;
 }
 
 .fileListItem {
@@ -236,13 +238,7 @@ textarea {
 	opacity: 0;
 }
 
-.cancel {
-	color: var(--vscode-textLink-activeForeground);
-}
 
-.cancel:hover {
-	background-color: var(--vscode-list-activeSelectionBackground);
-}
 
 .active {
 	border-top: 2px solid var(--vscode-textLink-foreground);
@@ -251,4 +247,22 @@ textarea {
 .selected {
 	border-left-color: var(--vscode-textLink-foreground);
 	color: var(--vscode-textLink-foreground);
+}
+
+.span {
+	display: flex;
+	gap: 5px;
+	align-items: center;
+}
+
+#cancel {
+	height: 26.4px;
+	max-width: 40px;
+}
+
+label {
+	font-size: 11px;
+	font-weight: 400;
+	margin: 0;
+	line-height: 1.4em;
 }

@@ -35,10 +35,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
     webviewView.webview.onDidReceiveMessage(data => {
       let document;
-      this._cancelTokenSource?.token.onCancellationRequested(() => {
-        this._cancelTokenSource?.dispose();
-        webviewView.webview.postMessage({type: 'done'});
-      });
+      
       switch (data.type) {
         case 'run': {
           if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
@@ -99,28 +96,32 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
         case 'search': {
           if (!data.path.length) {
             webviewView.webview.postMessage({type: 'error', message: 'Path is not provided.'});
-            webviewView.webview.postMessage({type: 'done'});
+            webviewView.webview.postMessage({type: 'done', mode: 'search'});
             return;
           }
-          // if (!data.searchFiles.length) {
-          //   webviewView.webview.postMessage({type: 'error', message: 'files/folder to search is not provided'});
-          //   webviewView.webview.postMessage({type: 'done'});
-          //   return;
-          // }
           if (!this._cancelTokenSource || this._cancelTokenSource?.token.isCancellationRequested) {
             this._cancelTokenSource = new vscode.CancellationTokenSource();
+            this._tokenCancellation(this._cancelTokenSource, () => {
+              // webviewView.webview.postMessage({type: 'done', mode: 'search'});
+            });
           }
           let total = 0;
           let urisCount = 0;
-          const pattern: string = getGlobPattern(data.searchFiles);
+          const processedWorkspaces: string[] = [];
+          const includePattern: string = getGlobPattern(data.searchFiles);
+          const excludePattern: string = data.excludeFiles.length ? getGlobPattern(data.excludeFiles) : '';
           (vscode.workspace.workspaceFolders || []).forEach((workspaceFolder, fileIndex) => {
-            const relativePath = new vscode.RelativePattern(workspaceFolder, pattern)
-            vscode.workspace.findFiles(relativePath, undefined, undefined , this._cancelTokenSource?.token)
+            const searchRelativePath = new vscode.RelativePattern(workspaceFolder, includePattern);
+            const execludeRelativePath = excludePattern.length ? new vscode.RelativePattern(workspaceFolder, excludePattern) : undefined;
+            vscode.workspace.findFiles(searchRelativePath, execludeRelativePath, undefined , this._cancelTokenSource?.token)
               .then((uris) => {
                 urisCount += uris.length;
                 if ((vscode.workspace?.workspaceFolders?.length || 0)-1 === fileIndex && urisCount === 0) {
                   webviewView.webview.postMessage({type: 'warning', message: 'No files found.'})
-                  webviewView.webview.postMessage({type: 'done'});
+                  webviewView.webview.postMessage({type: 'done', mode: 'search'});
+                }
+                if (this._cancelTokenSource?.token.isCancellationRequested) {
+                  return;
                 }
                 uris.forEach((uri, uriIndex) => {
                   vscode.workspace.fs.readFile(uri)
@@ -152,16 +153,19 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                       } 
                     })
                     .then(() => {
-                      if ((vscode.workspace?.workspaceFolders?.length || 0)-1 === fileIndex && uris.length - 1 === uriIndex) {
+                      if (vscode.workspace.getWorkspaceFolder(uri)?.name.length && !processedWorkspaces.includes(vscode.workspace.getWorkspaceFolder(uri)?.name as string)) {
+                        processedWorkspaces.push(vscode.workspace.getWorkspaceFolder(uri)?.name as string);
+                      }
+                      if (vscode.workspace?.workspaceFolders?.length === processedWorkspaces.length && uris.length - 1 === uriIndex) {
                         if (total === 0) {
                           webviewView.webview.postMessage({ type: 'warning', message: 'No files with matching path expression found.' });
                         }
-                        webviewView.webview.postMessage({type: 'done'});
+                        webviewView.webview.postMessage({type: 'done', mode: 'search'});
                         // console.log('find done! Total found: ', total, ' Is user cancelled ? ', this._cancelTokenSource?.token.isCancellationRequested);
                       }
                     });
                 });
-              });
+              })
           });
           break;
         };
@@ -267,14 +271,25 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                 <li id="defaultMode" class="tab">Query</li>
                 <li id="searchMode" class="tab">Find <sup><i>*beta</i></sup></li>
               </ul>
-              <input type="text" id="search" placeholder="files/folder to include"/>
-              <button class="run">
-                Run Path 
-                <div class="icons">
-                  <div class="icon cancel invisible"><i class="codicon codicon-close" title="Cancel"></i></div>
-                  <div class="icon"><i class="codicon codicon-sync" title="Syncing"></i></div>
-                </div>
-              </button>
+              <div id="searchTermWrapper">
+                <label>files to include</label>
+                <input type="text" id="searchTerm"/>
+              </div>
+              <div id="excludeTermWrapper">
+                <label>files to exclude</label>
+                <input type="text" id="excludeTerm"/>
+              </div>
+              <span class="span">
+                <button class="run">
+                  Run Path 
+                  <div class="icons">
+                    <div class="icon"><i class="codicon codicon-sync" title="Syncing"></i></div>
+                  </div>
+                </button>
+                <button id="cancel" disabled> 
+                  <div class="icon cancel"><i class="codicon codicon-close" title="Cancel"></i></div>
+                </button>
+              </span>
               <div id="feedback"></div>
             </div>
             <div class="spacer"></div>
@@ -382,6 +397,13 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     } else if(this._treeView)  {
       this._treeView.title = `Query Result: 0`;
     }
+  }
+
+  private _tokenCancellation(source: vscode.CancellationTokenSource, callback: Function) {
+    source.token.onCancellationRequested(() => {
+      source.dispose();
+      callback();
+    });
   }
 }
 

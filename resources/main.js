@@ -9,14 +9,17 @@
   const pathDom = document.querySelector('.path');
   const pathListDom = document.querySelector('.pathList');
   const favPathListDom = document.querySelector('.favPathList');
-  const searchDom = document.querySelector('#search')
+  const searchDom = document.querySelector('#searchTerm');
+  const excludeDom = document.querySelector('#excludeTerm');
   const searchResultListDom = document.querySelector('.searchResultList');
-  const cancelSearchIconDom = document.querySelector('.cancel');
+  const cancelSearchButton = document.querySelector('#cancel');
   const runTimer = null;
   let isRunRequestDone = true;
+  let isFinding = false;
 
   pathDom.value = oldState?.path?.length ? oldState?.path : '';
-  searchDom.value = oldState?.search?.length ? oldState?.search : '';
+  searchDom.value = oldState?.search?.length ? oldState?.searchTerm : '';
+  excludeDom.value = oldState?.excludeTerm?.length ? oldState?.excludeTerm : '';
   /**
    * build a new historyPaths state and update html dom when run path is clicked
    */
@@ -303,15 +306,15 @@
         doms.feedback.update('reset');
 
         if (mode === 'search') {
-          cancelSearchIconDom.addEventListener('click', handlers.cancelFindRequest);
-          if (cancelSearchIconDom.classList.contains('invisible')) {
-            cancelSearchIconDom.classList.toggle('invisible');
-          }
+          isFinding = true;
+          cancelSearchButton.addEventListener('click', handlers.cancelFindRequest);
+          cancelSearchButton.disabled = false;
 
           vscode.setState({
             ...vscode.getState(),
             path,
-            search: searchDom.value,
+            searchTerm: searchDom.value,
+            excludeTerm: excludeDom.value,
             searchResult: {}
           });
       
@@ -320,7 +323,8 @@
           vscode.postMessage({
             type: 'search',
             path,
-            searchFiles: searchDom.value
+            searchFiles: searchDom.value,
+            excludeFiles: excludeDom.value
           });
         } else {
           vscode.setState({
@@ -341,9 +345,12 @@
         isRunRequestDone = false;
         runTimer = setTimeout((timout) => {
           if (!isRunRequestDone) {
-            doms.feedback.update('warning', mode === 'search' ? 'This may take longer for large workspace. Refine the files/folders to limit and improve the search time' : 'This may take longer for a large file');
+            doms.feedback.update('warning', mode === 'search' ? 
+              'This may take longer for large workspace. Refine the files/folders to limit and improve the search time' : 
+              'This may take longer for a large file'
+            );
           }
-        }, 1000);
+        }, mode === 'search' ? 2000 : 1000);
       } catch(e) {
         // TODO
         // doms.feedback.update('error', 'An unexpected error had occcured');
@@ -432,7 +439,9 @@
       });
       doms.hide.domWithId('searchContainer');
       doms.show.domWithId('pathsContainer');
-      doms.hide.domWithId('search');
+      doms.hide.domWithId('searchTermWrapper');
+      doms.hide.domWithId('excludeTermWrapper');
+      doms.hide.domWithId('cancel');
       document.getElementById('defaultMode')?.classList.add('active');
       document.getElementById('searchMode')?.classList.remove('active');
     },
@@ -443,7 +452,9 @@
       });
       doms.hide.domWithId('pathsContainer');
       doms.show.domWithId('searchContainer');
-      doms.show.domWithId('search');
+      doms.show.domWithId('searchTermWrapper');
+      doms.show.domWithId('excludeTermWrapper');
+      doms.show.domWithId('cancel');
       document.getElementById('searchMode')?.classList.add('active');
       document.getElementById('defaultMode')?.classList.remove('active');
     },
@@ -510,20 +521,39 @@
       doms.refresh.searchResultList();
     },
     cancelFindRequest: (event) => {
-      // TODO: only show icon on filesearch .
-      // icon to be stand out
       event.stopPropagation();
       vscode.postMessage({
         type: 'cancel-search'
       });
+      isFinding = false;
+      cancelSearchButton.removeEventListener('click', handlers.cancelFindRequest);
+      cancelSearchButton.disabled = true;
     }
   };
  
   document.querySelector('.run').addEventListener('click', handlers.runPathClicked);
-  document.querySelector('#defaultMode').addEventListener('click', handlers.defaultModeClicked)
-  document.querySelector('#searchMode').addEventListener('click', handlers.searchModeClicked)
-  document.querySelectorAll('.histPath').forEach(histPath => histPath.addEventListener('click', handlers.histPathClicked));
-  document.querySelectorAll('.codicon-close').forEach(removeIcon => removeIcon.addEventListener('click', handlers.codIconClicked))
+  document.querySelector('#defaultMode').addEventListener('click', handlers.defaultModeClicked);
+  document.querySelector('#searchMode').addEventListener('click', handlers.searchModeClicked);
+
+  document.querySelectorAll('.histPath').forEach(
+    histPath => histPath.addEventListener('click', handlers.histPathClicked)
+  );
+  document.querySelectorAll('.codicon-close').forEach(
+    removeIcon => removeIcon.addEventListener('click', handlers.codIconClicked)
+  );
+
+  searchDom.addEventListener('focus', (event) => {
+    event.currentTarget.placeholder = 'e.g. file*.json, include/**/folders';
+  });
+  searchDom.addEventListener('blur', (event) => {
+    event.currentTarget.placeholder = '';
+  });
+  excludeDom.addEventListener('focus', (event) => {
+    event.currentTarget.placeholder = 'e.g. file*.json, exclude/**/folders';
+  });
+  excludeDom.addEventListener('blur', (event) => {
+    event.currentTarget.placeholder = '';
+  });
 
   window.addEventListener('message', event => {
     const data = event.data;
@@ -532,50 +562,55 @@
         clearTimeout(runTimer);
       }
       isRunRequestDone = true;
-      cancelSearchIconDom.removeEventListener('click', handlers.cancelFindRequest);
-      cancelSearchIconDom.classList.toggle('invisible', true);
+      
+      if (data.mode === 'search' && isFinding) {
+        cancelSearchButton.removeEventListener('click', handlers.cancelFindRequest);
+        cancelSearchButton.disabled = true;
+        isFinding = false;
+      }
       
       // stop spinner
       doms.spinner.stop();
       doms.runButton.enable();
     } else if (data.type === 'searchResponse') {
-      const searchResultState = vscode.getState()?.searchResult || {};
-      // TODO: what happens if there's no workspace?
-      if (!searchResultState[data.workspaceName]) {
-        searchResultState[data.workspaceName] = [];
-      }
-      searchResultState[data.workspaceName].push({
-        fileName: data.fileName,
-        filePath: data.filePath,
-        queryPath: data.queryPath,
-        relativePath: data.relativePath,
-        count: data.resultCount
-      });
-
-      searchResultState[data.workspaceName].sort((a, b) => {
-        const aName = a.fileName.toUpperCase();
-        const bName = b.fileName.toUpperCase();
-        if (aName < bName) {
-          return -1;
+      if (isFinding) {
+        const searchResultState = vscode.getState()?.searchResult || {};
+        
+        if (!searchResultState[data.workspaceName]) {
+          searchResultState[data.workspaceName] = [];
         }
-        if (aName > bName) {
+        searchResultState[data.workspaceName].push({
+          fileName: data.fileName,
+          filePath: data.filePath,
+          queryPath: data.queryPath,
+          relativePath: data.relativePath,
+          count: data.resultCount
+        });
+  
+        searchResultState[data.workspaceName].sort((a, b) => {
+          const aName = a.fileName.toUpperCase();
+          const bName = b.fileName.toUpperCase();
+          if (aName < bName) {
+            return -1;
+          }
+          if (aName > bName) {
+            return 1;
+          }
           return 1;
-        }
-        return 1;
-      });
-
-      vscode.setState({
-        ...vscode.getState(),
-        searchResult: {
-          ...searchResultState
-        }
-      });
-      doms.refresh.searchResultList();
+        });
+  
+        vscode.setState({
+          ...vscode.getState(),
+          searchResult: {
+            ...searchResultState
+          }
+        });
+        doms.refresh.searchResultList();
+      }
     } else {
       doms.feedback.update(data.type, data.message);
     }
   });
-
 
   // Observer to toggle btw absolute and sticky position of the footer
   const stickyFooterObserver = new IntersectionObserver(([entry]) => {

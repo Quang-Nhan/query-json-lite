@@ -2,8 +2,12 @@
 
 ## Future feature
 - highlight all results in the queried file in opened queried JSON file
-- exclude directories/files in find mode
 ---
+
+## v0.4.2 (2024-04-27)
+- Fixed cancel for long running find mode
+- Added exclude files/folders term in find mode
+
 ## v0.4.1 (2024-04-20)
 - Improved Find tab/mode user experience
 - Fixed "remove" find file line item bug
@@ -21,17 +25,17 @@
     - if file is closed, navigate will open the queried file in the active tab group
 
 ## v0.3.0 (2023-12-21)
-- Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.5
-- Add the ability to star a path history (max 5 items)
+- Bumped [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.5
+- Added the ability to star a path history (max 5 items)
 - Fixed error where nothing is returned when running in a new workspace (or fresh installs)
 - Fixed running path with full axis name expression (contains '::')
 
 ## v0.2.0 (2023-09-12)
-- Change path from input to textarea field
-- Add path history (max 20 items)
+- Changed path from input to textarea field
+- Added path history (max 20 items)
 
 ## v0.1.1 (2023-06-17)
-- Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.4
+- Bumped [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.4
     - fixes root descendants xpath used as argument
     - fixes boolean filter expressions
 
@@ -40,7 +44,7 @@
 - Fixed unexpected label for array items
 
 ## v0.0.2 (2023-05-27)
-- Bump [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.2
+- Bumped [JSXPath](https://github.com/Quang-Nhan/JSXPath) to v1.1.2
 - Fixed getting parent node
 - Fixed error "element with id X is already registered" 
 
