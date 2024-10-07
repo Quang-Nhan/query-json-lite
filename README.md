@@ -12,6 +12,7 @@ Interactively query a JSON file using XPath like notation
 - [Result to new file](#result-to-new-file)
 - [Path History](#path-history)
 - [Find Mode (beta)](#find-mode-beta-release)
+- [In Document Dynamic Highlight](#in-document-dynamic-highlight)
 
 
 ### Query JSON object
@@ -104,3 +105,8 @@ Search through workspace folders for the given path expression
 - note: path expression is not added in path history in find mode
 
 ![Find Mode](resources/FindMode.png)
+
+### In Document Dynamic Highlight
+- Dynamically highlight the result in the queried document with selectable/adjustable color
+
+![Highlight Document](resources/HighlightEditors.gif)

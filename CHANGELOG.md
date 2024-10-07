@@ -1,8 +1,8 @@
 # Change Log
 
-## Future feature
-- highlight all results in the queried file in opened queried JSON file
----
+## v0.5.0
+- Highlight results in the queried file
+- Update find files to match vscode search look and feel
 
 ## v0.4.2 (2024-04-27)
 - Fixed cancel for long running find mode

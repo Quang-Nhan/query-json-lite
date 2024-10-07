@@ -159,6 +159,16 @@ textarea {
 	border-top: 2px solid transparent;
 }
 
+#searchJSON {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+#searchTermContainer {
+	width: 100%;
+}
+
 #searchTerm, #excludeTerm {
 	padding-left: 10px;
 	padding-right: 10px;
@@ -201,6 +211,18 @@ textarea {
 	border-radius: 25%;
 	background-color: var(--vscode-banner-background);
 }
+
+#highlightContainer {
+	display: flex;
+	flex-direction: row;
+	bottom: 30px;
+	height: 80px;
+	width: 90%;
+	background-color: var(--vscode-sideBar-background);
+	justify-items: center;
+	align-items: center;
+}
+
 
 #footerContainer {
 	bottom: -1px;

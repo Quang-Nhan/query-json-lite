@@ -4,13 +4,16 @@ import * as vscode from 'vscode';
 
 import { QueryJSONTreeDataProvider } from './QueryJSONTreeDataProvider';
 import QueryJSONWebViewProvider from './QueryJSONWebViewProvider';
-import { goto } from './GoTo';
+import { QueryJSONState } from './QueryJSONState';
+import { QueryJSONDocumentProcessor } from './QueryJSONDocumentProcessor';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	const treePovider = new QueryJSONTreeDataProvider();
-	const webviewProvider = new QueryJSONWebViewProvider(context.extensionUri, treePovider, context.workspaceState);
+	const queryJsonState = new QueryJSONState(context);
+	const documentProcessor = new QueryJSONDocumentProcessor(queryJsonState);
+	const treePovider = new QueryJSONTreeDataProvider(queryJsonState);
+	const webviewProvider = new QueryJSONWebViewProvider(context.extensionUri, treePovider, queryJsonState);
 	
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(QueryJSONWebViewProvider.viewType, webviewProvider)
@@ -35,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand('query-json-lite.goto', (nodes, document) => {
-		goto(nodes, document);
+		documentProcessor.goto(nodes, document);
 	}))
 
 	let copy = vscode.commands.registerCommand('query-json-lite.copy', (nodeItem, arg2) => {

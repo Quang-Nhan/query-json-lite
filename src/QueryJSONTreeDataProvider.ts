@@ -1,6 +1,7 @@
 import { KEYS, tNode, tNodesState } from 'jsxpath';
 import * as vscode from 'vscode';
-import { tNodes } from './GoTo';
+import { QueryJSONState } from './QueryJSONState';
+import { QueryJSONDocumentUtility, tNodes } from './QueryJSONDocumentProcessor';
 
 let idList: any[] = [];
 
@@ -38,7 +39,7 @@ export class NodeItem extends vscode.TreeItem {
       return '{...}';
     }
     if (value === '{$a}') {
-      return '[...]'
+      return '[...]';
     }
     return value;
   }
@@ -50,8 +51,13 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
   nodes: tNodesState['nodes']['byId'] = {};
   value: any;
   document: vscode.TextDocument | undefined;
+  qjDocUtility: QueryJSONDocumentUtility;
   id = -2;
-  constructor() {}
+  constructor(
+    private qjState: QueryJSONState
+  ) {
+    this.qjDocUtility = new QueryJSONDocumentUtility();
+  }
 
   public update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any, document?: vscode.TextDocument }) {
     this.nodes = pathResult.nodes;
@@ -71,7 +77,7 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
     }
     if (element) {
       const currentNode = this.nodes[Number(element.id)];
-      return Promise.resolve(currentNode[KEYS.links].childrenIds.map((id: number) => {
+      return Promise.resolve(currentNode[KEYS.links].childrenIds.map((id: number, i: number) => {
         const child = this.nodes[id];
         let label = this.getDisplaylabel(child[KEYS.name], child[KEYS.arrayPosition]);
         if (currentNode[KEYS.valueType] === 'array') {
@@ -86,34 +92,52 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
           childId = child[KEYS.id];
         }
 
-        const ancestors = child[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId]);
+        const currentAncestorNodes = {
+          current: child,
+          ancestors: child[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId])
+        }
+        this.qjDocUtility.getSymbolRanges(currentAncestorNodes, this.document)
+          .then(range => {
+            if (range) {
+              this.qjState.addDocumentRange(this.document?.uri.fsPath as string, range, i === currentNode[KEYS.links].childrenIds.length-1)
+            }
+          });
         return new NodeItem(
           label, 
           child[KEYS.value], 
           childId, 
-          {current: child, ancestors: ancestors}, 
+          currentAncestorNodes, 
           this.document
         );
       }));
     } else if (this.nodesValue.length) {
       return Promise.resolve(this.nodesValue.map((node, i) => {
-        const ancestors = node[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId]);
+        const currentAncestorNodes = {
+          current: node,
+          ancestors: node[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId])
+        }
+        this.qjDocUtility.getSymbolRanges(currentAncestorNodes, this.document)
+          .then(range => {
+            if (range) {
+              this.qjState.addDocumentRange(this.document?.uri.fsPath as string, range, i === node[KEYS.links].ancestorIds.length-1);
+            }
+          });
         return new NodeItem(
           this.getDisplaylabel(node[KEYS.name], node[KEYS.arrayPosition]), 
           node[KEYS.value], 
           node[KEYS.id], 
-          {current: node, ancestors}, 
+          currentAncestorNodes, 
           this.document,
           this.value[i]
         );
       }));
     } else {
+      this.qjState.reset();
       return Promise.resolve(
         [new NodeItem('result', typeof this.value === 'string' ? this.value : (this.value === undefined ? '' : String(this.value)), '-1', {current: undefined, ancestors: undefined}, this.document)]
       );
     }
   }
-
   
   private _onDidChangeTreeData: vscode.EventEmitter<NodeItem | undefined | null | void> = new vscode.EventEmitter<NodeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<NodeItem | undefined | null | void> = this._onDidChangeTreeData.event;

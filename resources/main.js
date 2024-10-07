@@ -13,12 +13,15 @@
   const excludeDom = document.querySelector('#excludeTerm');
   const searchResultListDom = document.querySelector('.searchResultList');
   const cancelSearchButton = document.querySelector('#cancel');
-  const runTimer = null;
+  const hexDom = document.querySelector('#colorPicker');
+  const hexOpacityDom = document.querySelector('#opacity');
+
+  let runTimer = null;
   let isRunRequestDone = true;
   let isFinding = false;
 
   pathDom.value = oldState?.path?.length ? oldState?.path : '';
-  searchDom.value = oldState?.search?.length ? oldState?.searchTerm : '';
+  searchDom.value = oldState?.searchTerm?.length ? oldState?.searchTerm : '';
   excludeDom.value = oldState?.excludeTerm?.length ? oldState?.excludeTerm : '';
   /**
    * build a new historyPaths state and update html dom when run path is clicked
@@ -324,7 +327,7 @@
             type: 'search',
             path,
             searchFiles: searchDom.value,
-            excludeFiles: excludeDom.value
+            excludeFiles: vscode.getState().showExclude ? excludeDom.value : ''
           });
         } else {
           vscode.setState({
@@ -439,8 +442,7 @@
       });
       doms.hide.domWithId('searchContainer');
       doms.show.domWithId('pathsContainer');
-      doms.hide.domWithId('searchTermWrapper');
-      doms.hide.domWithId('excludeTermWrapper');
+      doms.hide.domWithId('searchJSON');
       doms.hide.domWithId('cancel');
       document.getElementById('defaultMode')?.classList.add('active');
       document.getElementById('searchMode')?.classList.remove('active');
@@ -452,11 +454,15 @@
       });
       doms.hide.domWithId('pathsContainer');
       doms.show.domWithId('searchContainer');
-      doms.show.domWithId('searchTermWrapper');
-      doms.show.domWithId('excludeTermWrapper');
+      doms.show.domWithId('searchJSON');
       doms.show.domWithId('cancel');
       document.getElementById('searchMode')?.classList.add('active');
       document.getElementById('defaultMode')?.classList.remove('active');
+      if (vscode.getState().showExclude) {
+        handlers.searchRightIconClicked()
+      } else {
+        handlers.searchDownIconClicked();
+      }
     },
     workspaceNameClicked: (event) => {
       const searchReusltWorkItemList = event.target.parentElement;
@@ -528,12 +534,42 @@
       isFinding = false;
       cancelSearchButton.removeEventListener('click', handlers.cancelFindRequest);
       cancelSearchButton.disabled = true;
+    },
+    changeHighlightColor: () => {
+      hexOpacityDom.style.accentColor = hexDom.value;
+
+      vscode.postMessage({
+        type: 'change-highlight',
+        hex: hexDom.value,
+        hexOpacity: hexOpacityDom.value
+      });
+    },
+    searchRightIconClicked: () => {
+      vscode.setState({
+        ...vscode.getState(),
+        showExclude: true
+      });
+      doms.show.domWithId('excludeTermWrapper');
+      doms.hide.domWithId('searchRightIcon');
+      doms.show.domWithId('searchDownIcon');
+    },
+    searchDownIconClicked: () => {
+      vscode.setState({
+        ...vscode.getState(),
+        showExclude: false
+      });
+      doms.hide.domWithId('excludeTermWrapper');
+      doms.show.domWithId('searchRightIcon');
+      doms.hide.domWithId('searchDownIcon');
     }
   };
  
   document.querySelector('.run').addEventListener('click', handlers.runPathClicked);
   document.querySelector('#defaultMode').addEventListener('click', handlers.defaultModeClicked);
   document.querySelector('#searchMode').addEventListener('click', handlers.searchModeClicked);
+
+  document.querySelector('#searchRightIcon').addEventListener('click', handlers.searchRightIconClicked);
+  document.querySelector('#searchDownIcon').addEventListener('click', handlers.searchDownIconClicked);
 
   document.querySelectorAll('.histPath').forEach(
     histPath => histPath.addEventListener('click', handlers.histPathClicked)
@@ -546,14 +582,17 @@
     event.currentTarget.placeholder = 'e.g. file*.json, include/**/folders';
   });
   searchDom.addEventListener('blur', (event) => {
-    event.currentTarget.placeholder = '';
+    event.currentTarget.placeholder = 'files to include';
   });
   excludeDom.addEventListener('focus', (event) => {
     event.currentTarget.placeholder = 'e.g. file*.json, exclude/**/folders';
   });
   excludeDom.addEventListener('blur', (event) => {
-    event.currentTarget.placeholder = '';
+    event.currentTarget.placeholder = 'files to exclude';
   });
+
+  hexDom.addEventListener('input', handlers.changeHighlightColor);
+  hexOpacityDom.addEventListener('input', handlers.changeHighlightColor);
 
   window.addEventListener('message', event => {
     const data = event.data;
@@ -607,6 +646,10 @@
         });
         doms.refresh.searchResultList();
       }
+    } else if (data.type === 'load-highlight-color') {
+      hexDom.value = data.hex;
+      hexOpacityDom.value = data.hexOpacity;
+      hexOpacityDom.style.accentColor = data.hex;
     } else {
       doms.feedback.update(data.type, data.message);
     }
@@ -617,6 +660,10 @@
     const footerDom = entry.target.parentElement.querySelector('#footerContainer');
     footerDom?.classList.toggle('footerAbsolute', entry.intersectionRatio === 1);
     footerDom?.classList.toggle('footerSticky', entry.intersectionRatio < 1);
+
+    const highlightDom = entry.target.parentElement.querySelector('#highlightContainer');
+    highlightDom?.classList.toggle('footerAbsolute', entry.intersectionRatio === 1);
+    highlightDom?.classList.toggle('footerSticky', entry.intersectionRatio < 1);
   }, { threshold: [1, 5/40] });
 
   stickyFooterObserver.observe(document.querySelector('#content'));

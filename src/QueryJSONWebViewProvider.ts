@@ -4,6 +4,7 @@ import { QueryJSONTreeDataProvider } from './QueryJSONTreeDataProvider';
 import { performance } from 'perf_hooks';
 import { runPath, tRunPathResult } from 'jsxpath';
 import path = require('path');
+import { QueryJSONState } from './QueryJSONState';
 
 export default class EvaluateJSONProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'query-json-lite.input';
@@ -11,7 +12,11 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
   private _treeView?: vscode.TreeView<unknown>;
   private _cancelTokenSource?: vscode.CancellationTokenSource;
 
-  constructor(private readonly _extensionUri: vscode.Uri, private _evalJSONProvider: QueryJSONTreeDataProvider, private _workspaceState: vscode.Memento) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri, 
+    private qjTreeProvider: QueryJSONTreeDataProvider, 
+    private qjState: QueryJSONState
+  ) {}
 
   public run() {
     if (this._view) {
@@ -29,7 +34,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        this._extensionUri
+        this.extensionUri
       ]
     }
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
@@ -39,10 +44,10 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
       switch (data.type) {
         case 'run': {
           if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
-            this._evalJSONProvider?.update({
+            this.qjTreeProvider?.update({
               nodesValue: [], nodes: {}, value: [], document
             });
-            this._evalJSONProvider?.refresh();
+            this.qjTreeProvider?.refresh();
             const message = !data.path.length ? 'Path is not provided.' : 'Invalid file type. Was expecting JSON file.';
             webviewView.webview.postMessage({type: 'error', message: message});
             webviewView.webview.postMessage({type: 'done'});
@@ -74,15 +79,15 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
             if (nodesValue && nodes) {
               if (!this._treeView) {
                 this._treeView = vscode.window.createTreeView('query-json-lite.result', {
-                  treeDataProvider: this._evalJSONProvider
+                  treeDataProvider: this.qjTreeProvider
                 });
               }
 
               const fileNameSplitted = document?.fileName.split('/') || [];
               this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
               this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
-              this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
-              this._evalJSONProvider?.refresh();
+              this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+              this.qjTreeProvider?.refresh();
               if (!value.length) {
                 webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
               }
@@ -180,34 +185,21 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                   });
                 }
 
-                let viewColumn;
-                vscode.window.tabGroups.all.find(tabGroup => {
-                  if (tabGroup.tabs.some(t => t.input && (t.input as vscode.TextDocument).uri?.fsPath === document.uri?.fsPath)) {
-                    viewColumn = tabGroup.viewColumn;
-                    return true;
-                  }
-                  return false;
-                });
-
-                if (!viewColumn) {
-                  viewColumn = vscode.window.tabGroups.activeTabGroup.viewColumn
-                }
-
-                vscode.window.showTextDocument(document, viewColumn, false);
+                vscode.window.showTextDocument(document, vscode.window.tabGroups.activeTabGroup.viewColumn, false);
                 
                 try {
                   this._runPath(document.getText(), data.queryPath, ({nodes, nodesValue, value}: tRunPathResult) => {
                     if (nodesValue && nodes) {
                       if (!this._treeView) {
                         this._treeView = vscode.window.createTreeView('query-json-lite.result', {
-                          treeDataProvider: this._evalJSONProvider
+                          treeDataProvider: this.qjTreeProvider
                         });
                       }
-        
+
                       this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
                       this._treeView.description = `${data.workspaceName}/${data.relativePath}`;
-                      this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
-                      this._evalJSONProvider?.refresh();
+                      this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+                      this.qjTreeProvider?.refresh();
                       if (!value.length) {
                         webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
                       }
@@ -229,19 +221,28 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
           }
           break;
         }
+        case 'change-highlight': {
+          this.qjState.setHexValues(data);
+        }
       }
     });
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this._postLoadHighlightColor();
+      }
+    });
+    this._postLoadHighlightColor();
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'main.js'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'main.js'));
 
     // Do the same for the stylesheet.
-    const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'reset.css'));
-    const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'vscode.css'));
-    const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'main.css'));
-    const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'codicon.css'));
+    const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'reset.css'));
+    const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'vscode.css'));
+    const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'main.css'));
+    const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'codicon.css'));
 
     // Use a nonce to only allow a specific script to be run.
     const nonce = getNonce();
@@ -260,7 +261,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
           <link href="${styleResetUri}" rel="stylesheet">
           <link href="${styleVSCodeUri}" rel="stylesheet">
           <link href="${styleMainUri}" rel="stylesheet">
-          <link href="${codiconsUri}" rel="stylesheet" />
+          <link href="${codiconsUri}" rel="stylesheet">
           <title>Evaluate JSON</title>
         </head>
         <body>
@@ -271,13 +272,19 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                 <li id="defaultMode" class="tab">Query</li>
                 <li id="searchMode" class="tab">Find <sup><i>*beta</i></sup></li>
               </ul>
-              <div id="searchTermWrapper">
-                <label>files to include</label>
-                <input type="text" id="searchTerm"/>
-              </div>
-              <div id="excludeTermWrapper">
-                <label>files to exclude</label>
-                <input type="text" id="excludeTerm"/>
+              <div id="searchJSON">
+                <div id="searchChevrons">
+                  <i id="searchRightIcon" class="codicon codicon-chevron-right"></i>
+                  <i id="searchDownIcon" class="codicon codicon-chevron-down"></i>
+                </div>
+                <div id="searchTermContainer">
+                  <div id="searchTermWrapper">
+                    <input type="text" id="searchTerm" placeholder="files to include"/>
+                  </div>
+                  <div id="excludeTermWrapper">
+                    <input type="text" id="excludeTerm" placeholder="files to exclude"/>
+                  </div>
+                </div>
               </div>
               <span class="span">
                 <button class="run">
@@ -342,6 +349,10 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
               </ul>
             </div>
           </div>
+          <div id="highlightContainer" class="footerSticky">
+            <input id="colorPicker" type="color" height="40" title="highlight color"/>
+            <input id="opacity" type="range" min="0" max="1" step="0.1" title="highlight opacity"/>
+          </div>
           <div id="footerContainer" class="footerSticky">
             <ul class="footerList">
               <li class="footerItem">
@@ -365,6 +376,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
 
   private _runPath(text: string, path: string, callback: Function) {    
     const json = JSON.parse(text);
+    this.qjState.reset();
     runPath({
       path,
       then: ({nodesValue, nodes, error, value}) => {
@@ -382,15 +394,15 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     if (nodesValue && nodes) {
       if (!this._treeView) {
         this._treeView = vscode.window.createTreeView('query-json-lite.result', {
-          treeDataProvider: this._evalJSONProvider
+          treeDataProvider: this.qjTreeProvider
         });
       }
 
       const fileNameSplitted = document?.fileName.split('/') || [];
       this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
       this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
-      this._evalJSONProvider?.update({ nodesValue, nodes, value, document });
-      this._evalJSONProvider?.refresh();
+      this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+      this.qjTreeProvider?.refresh();
       if (!value.length) {
         webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
       }
@@ -403,6 +415,15 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     source.token.onCancellationRequested(() => {
       source.dispose();
       callback();
+    });
+  }
+
+  private _postLoadHighlightColor() {
+    const hexValues = this.qjState.getHexValues();
+    this._view?.webview.postMessage({
+      type: 'load-highlight-color',
+      hex: hexValues.hex,
+      hexOpacity: hexValues.hexOpacity
     });
   }
 }
