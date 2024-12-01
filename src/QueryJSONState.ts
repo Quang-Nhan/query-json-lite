@@ -17,16 +17,18 @@ export type tQJState = {
   mode: string,
   currentDocumentMeta?: tDocumentMeta,
   hex?: string,
-  hexOpacity?: string
+  hexOpacity?: string,
+  highlightEnabled?: boolean
 };
 
 export type tSubscriberArgs = {
   type: string, state: tQJState
 }
 
-export type tHexValues = {
+export type tHighlightOptions = {
   hex: string,
-  hexOpacity: string
+  hexOpacity: string,
+  highlightEnabled: boolean
 };
 
 export class QueryJSONState {
@@ -80,18 +82,25 @@ export class QueryJSONState {
     this.context.workspaceState.update(this.QJSTATE, JSON.stringify(this.state))
   }
 
-  public setHexValues({hex, hexOpacity}: tHexValues) {
+  public setHexValues({hex, hexOpacity}: tHighlightOptions) {
     this.state.hex = hex;
     this.state.hexOpacity = hexOpacity;
     this.save();
     this.emit('hex-changed');
   }
 
-  public getHexValues() {
+  public enableHighlight(enable: boolean) {
+    this.state.highlightEnabled = !!enable;
+    this.save();
+    this.emit('hex-changed');
+  }
+
+  public getDocumentHighlightOptions(): tHighlightOptions {
     return {
       hex: this.state.hex || '',
-      hexOpacity: this.state.hexOpacity || ''
-    };
+      hexOpacity: this.state.hexOpacity || '',
+      highlightEnabled: this.state.highlightEnabled === undefined ? true : this.state.highlightEnabled
+    }
   }
 
   public getDocumentMetas() {
@@ -130,7 +139,8 @@ export class QueryJSONState {
       mode: 'query',
       currentDocumentMeta: undefined,
       hex: this.state?.hex,
-      hexOpacity: this.state?.hexOpacity
+      hexOpacity: this.state?.hexOpacity,
+      highlightEnabled: typeof this.state?.highlightEnabled === 'boolean' ? this.state.highlightEnabled : true
     }
   }
 }

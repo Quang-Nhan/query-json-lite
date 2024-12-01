@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { QueryJSONState, tDocumentMeta, tHexValues, tRange, tSubscriberArgs } from './QueryJSONState';
+import { QueryJSONState, tDocumentMeta, tHighlightOptions, tRange, tSubscriberArgs } from './QueryJSONState';
 import { KEYS, tNode } from 'jsxpath';
 
 export type tNodes = {
@@ -7,14 +7,31 @@ export type tNodes = {
   ancestors?: tNode
 };
 
-export class QueryJSONDocumentUtility {
-  constructor(){}
-  
-  public async getSymbolRanges(nodes: tNodes, document?: vscode.TextDocument) {
-    if (!document) return;
+type tDocCache = {
+  document: vscode.TextDocument | undefined,
+  symbols: vscode.DocumentSymbol[] | undefined
+}
 
-    const symbols = await this.getSymbols(document);
-    const foundSymbol = this.searchForSymbol(symbols, nodes);
+export class QueryJSONDocumentUtility {
+  docCache: tDocCache = {
+    document: undefined,
+    symbols: undefined
+  }
+  
+  constructor(){}
+
+  public async cacheDocument(document: vscode.TextDocument) {
+    const symbols = await this.getSymbols(document)
+    this.docCache = {
+      document,
+      symbols
+    };
+  }
+  
+  public getSymbolRanges(nodes: tNodes) {
+    if (!this.docCache.symbols) return;
+
+    const foundSymbol = this.searchForSymbol(this.docCache.symbols, nodes);
 
     if (!foundSymbol) return;
 
@@ -157,7 +174,7 @@ export class QueryJSONDocumentProcessor {
 
 
   constructor(private qjState: QueryJSONState) {
-    this.highLightDecor = this.getHighlightDecor({hex: '', hexOpacity: '1'});
+    this.highLightDecor = this.getHighlightDecor({hex: '', hexOpacity: '1', highlightEnabled: true});
     this.qjDocUtility = new QueryJSONDocumentUtility();
     this.disposibleListener = vscode.window.tabGroups.onDidChangeTabs((e) => {
       const changedOpenedFile = (e.changed.at(0)?.input || e.opened.at(0)?.input) as vscode.TextDocument;
@@ -208,9 +225,9 @@ export class QueryJSONDocumentProcessor {
               };
               case 'range-changed':
               case 'hex-changed': {
-                const highLightDecor = this.getHighlightDecor({hex: state.hex || '', hexOpacity: state.hexOpacity || '1'});
+                const highLightDecor = this.getHighlightDecor({hex: state.hex || '', hexOpacity: state.hexOpacity || '1', highlightEnabled: !!state.highlightEnabled});
                 editors.forEach(editor => {
-                  editor.setDecorations( highLightDecor, getRanges(state.currentDocumentMeta?.ranges as tDocumentMeta['ranges']) );
+                  editor.setDecorations( highLightDecor, state.highlightEnabled ? getRanges(state.currentDocumentMeta?.ranges as tDocumentMeta['ranges']) : [] );
                 });
                 break;
               };
@@ -240,12 +257,12 @@ export class QueryJSONDocumentProcessor {
     }
   }
 
-  private getHighlightDecor(hexValues: tHexValues): vscode.TextEditorDecorationType {
+  private getHighlightDecor(hexValues: tHighlightOptions): vscode.TextEditorDecorationType {
     this.highLightDecor = vscode.window.createTextEditorDecorationType(this.getHighlightOptions(hexValues));
     return this.highLightDecor;
   }
 
-  private getHighlightOptions(hexValues: tHexValues): vscode.DecorationRenderOptions  {
+  private getHighlightOptions(hexValues: tHighlightOptions): vscode.DecorationRenderOptions  {
     const rgba = convertHexToRGBA(hexValues);
     this.decorOptions = {
       backgroundColor: rgba
@@ -254,7 +271,7 @@ export class QueryJSONDocumentProcessor {
   }
 }
 
-const convertHexToRGBA = ({hex, hexOpacity}: tHexValues) => {
+const convertHexToRGBA = ({hex, hexOpacity}: tHighlightOptions) => {
   const cleanedHex = hex.replace('#', '');
   const r = parseInt(cleanedHex.substring(0, 2), 16);
   const g = parseInt(cleanedHex.substring(2, 4), 16);

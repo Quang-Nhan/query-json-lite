@@ -53,17 +53,26 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
   document: vscode.TextDocument | undefined;
   qjDocUtility: QueryJSONDocumentUtility;
   id = -2;
+  // refreshHighlight = false;
+  addDocumentRangeArgs: [string, { startLine: number; startCharacter: number; endLine: number; endCharacter: number; }, boolean|undefined][] = [];
+
   constructor(
     private qjState: QueryJSONState
   ) {
     this.qjDocUtility = new QueryJSONDocumentUtility();
   }
 
-  public update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any, document?: vscode.TextDocument }) {
+  public async update(pathResult: {nodesValue: tNode[], nodes: tNodesState['nodes']['byId'], value: any, document?: vscode.TextDocument }) {
+    if (pathResult.document) {
+      await this.qjDocUtility.cacheDocument(pathResult.document as vscode.TextDocument);
+    }
     this.nodes = pathResult.nodes;
     this.nodesValue = pathResult.nodesValue;
     this.value = pathResult.value;
     this.document = pathResult.document;
+    // this.refreshHighlight = true;
+
+    this.addDocumentRangeArgs = [] 
   }
 
   public getTreeItem(element: NodeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
@@ -96,15 +105,16 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
           current: child,
           ancestors: child[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId])
         }
-        this.qjDocUtility.getSymbolRanges(currentAncestorNodes, this.document)
-          .then(range => {
-            if (range) {
-              this.qjState.addDocumentRange(this.document?.uri.fsPath as string, range, i === currentNode[KEYS.links].childrenIds.length-1)
-            }
-          });
+
+        const range = this.qjDocUtility.getSymbolRanges(currentAncestorNodes);
+        range && this.addDocumentRangeArgs.push([ this.document?.uri.fsPath as string, range, i === currentNode[KEYS.links].childrenIds.length-1 ]);
+        if (this.qjState.getDocumentHighlightOptions().highlightEnabled && i === currentNode[KEYS.links].childrenIds.length-1) {
+          this.addDocumentRanges();
+        }
+
         return new NodeItem(
           label, 
-          child[KEYS.value], 
+          child[KEYS.value],
           childId, 
           currentAncestorNodes, 
           this.document
@@ -116,12 +126,13 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
           current: node,
           ancestors: node[KEYS.links].ancestorIds.map((aId: number) => this.nodes[aId])
         }
-        this.qjDocUtility.getSymbolRanges(currentAncestorNodes, this.document)
-          .then(range => {
-            if (range) {
-              this.qjState.addDocumentRange(this.document?.uri.fsPath as string, range, i === node[KEYS.links].ancestorIds.length-1);
-            }
-          });
+
+        const range = this.qjDocUtility.getSymbolRanges(currentAncestorNodes);
+        range && this.addDocumentRangeArgs.push([ this.document?.uri.fsPath as string, range, i === this.nodesValue.length-1 ]);
+        if (this.qjState.getDocumentHighlightOptions().highlightEnabled && i === this.nodesValue.length-1) {
+          this.addDocumentRanges();
+        }
+
         return new NodeItem(
           this.getDisplaylabel(node[KEYS.name], node[KEYS.arrayPosition]), 
           node[KEYS.value], 
@@ -144,6 +155,17 @@ export class QueryJSONTreeDataProvider implements vscode.TreeDataProvider<NodeIt
 
   public refresh(): void {
     this._onDidChangeTreeData.fire();
+  }
+
+  public addDocumentRanges() {
+    const documentMeta = this.qjState.getDocumentMetas();
+    if (!documentMeta.length || documentMeta[0].fsPath !== this.document?.uri.fsPath) {
+      this.addDocumentRangeArgs.forEach(args => {
+        if (args) {
+          this.qjState.addDocumentRange.apply(this.qjState, args);
+        }
+      });
+    }
   }
 
   private getDisplaylabel(label: string, arrayPosition: number) {

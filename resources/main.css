@@ -49,7 +49,7 @@ ul {
 
 textarea {
 	resize: vertical;
-	min-height: 8em;
+	min-height: 50px;
 	margin-top: 0;
 	padding: 10px
 }
@@ -143,13 +143,21 @@ textarea {
 
 
 /* Search */
-.tabs, .footerList {
+
+.tabs {
 	display: flex;
-	justify-content: center;
-	/* align-items: center; */
+}
+.tab {
+	/* flex-basis: 0; */
+	/* flex-grow: 1; */
+	min-width: 0;
+	text-align: center;
+	cursor: pointer;
+	padding: 7px;
+	border-top: 2px solid transparent;
 }
 
-.tab, .footerItem {
+.footerItem {
 	flex-basis: 0;
 	flex-grow: 1;
 	min-width: 0;
@@ -157,6 +165,12 @@ textarea {
 	cursor: pointer;
 	padding: 7px;
 	border-top: 2px solid transparent;
+}
+
+.footerList {
+	display: flex;
+	justify-content: center;
+	/* align-items: center; */
 }
 
 #searchJSON {

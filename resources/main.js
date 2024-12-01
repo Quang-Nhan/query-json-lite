@@ -1,5 +1,26 @@
 // TODO: https://stackoverflow.com/questions/75494793/using-es6-modules-in-vs-code-webview
 
+/**
+ * State:
+ * 
+ * {
+ *  path: string,
+ *  historyPaths: string[]
+ *  favHistoryPaths: string[],
+ *  searchTerm: string,
+ *  excludeTerm: string,
+ *  queryInputHeight: number,
+ *  searchResult: {
+ *    [workspaceName]: {
+ *      fileName: string,
+ *      filePath: string,
+ *      queryPath: string,
+ *      relativePath: string,
+ *      count: number
+ *    }
+ *  }
+ * }
+ */
 
 (function () {
   const MAX_LIST_LENGTH = 20;
@@ -13,6 +34,7 @@
   const excludeDom = document.querySelector('#excludeTerm');
   const searchResultListDom = document.querySelector('.searchResultList');
   const cancelSearchButton = document.querySelector('#cancel');
+  const highlightSwitchDom = document.querySelector('#highlightSwitch');
   const hexDom = document.querySelector('#colorPicker');
   const hexOpacityDom = document.querySelector('#opacity');
 
@@ -537,7 +559,6 @@
     },
     changeHighlightColor: () => {
       hexOpacityDom.style.accentColor = hexDom.value;
-
       vscode.postMessage({
         type: 'change-highlight',
         hex: hexDom.value,
@@ -561,6 +582,16 @@
       doms.hide.domWithId('excludeTermWrapper');
       doms.show.domWithId('searchRightIcon');
       doms.hide.domWithId('searchDownIcon');
+    },
+    highlightToggled: (event) => {
+      vscode.setState({
+        ...vscode.getState(),
+        highlightEnabled: event.currentTarget.checked
+      });
+      vscode.postMessage({
+        type: 'toggle-highlight',
+        value: event.currentTarget.checked
+      });
     }
   };
  
@@ -593,6 +624,7 @@
 
   hexDom.addEventListener('input', handlers.changeHighlightColor);
   hexOpacityDom.addEventListener('input', handlers.changeHighlightColor);
+  highlightSwitchDom.addEventListener('change', handlers.highlightToggled);
 
   window.addEventListener('message', event => {
     const data = event.data;
@@ -646,10 +678,11 @@
         });
         doms.refresh.searchResultList();
       }
-    } else if (data.type === 'load-highlight-color') {
+    } else if (data.type === 'load-highlight-options') {
       hexDom.value = data.hex;
       hexOpacityDom.value = data.hexOpacity;
       hexOpacityDom.style.accentColor = data.hex;
+      highlightSwitchDom.checked = data.highlightEnabled;
     } else {
       doms.feedback.update(data.type, data.message);
     }
@@ -691,5 +724,18 @@
       ...vscode.getState(),
       searchResult: {}
     });
+  }
+
+  if (!oldState?.queryInputHeight || oldState?.queryInputHeight > 50) {
+    document.getElementById('pathTextArea').style.height = `${oldState.queryInputHeight}px`;
+
+    new ResizeObserver(() => {
+      if (document.getElementById('pathTextArea').clientHeight !== oldState.queryInputHeight) {
+        vscode.setState({
+          ...vscode.getState(),
+          queryInputHeight: document.getElementById('pathTextArea').clientHeight
+        });
+      }
+    }).observe(document.getElementById('pathTextArea'));
   }
 }());

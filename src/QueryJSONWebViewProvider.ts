@@ -38,17 +38,17 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
       ]
     }
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-    webviewView.webview.onDidReceiveMessage(data => {
+    webviewView.webview.onDidReceiveMessage(async data => {
       let document;
       
       switch (data.type) {
         case 'run': {
           if (!data.path.length || vscode.window.activeTextEditor?.document.languageId !== 'json') {
-            this.qjTreeProvider?.update({
+            await this.qjTreeProvider?.update({
               nodesValue: [], nodes: {}, value: [], document
             });
             this.qjTreeProvider?.refresh();
-            const message = !data.path.length ? 'Path is not provided.' : 'Invalid file type. Was expecting JSON file.';
+            const message = !data.path.length ? 'Path is not provided.' : 'Invalid file type. Was expecting a JSON file.';
             webviewView.webview.postMessage({type: 'error', message: message});
             webviewView.webview.postMessage({type: 'done'});
             return;
@@ -86,7 +86,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
               const fileNameSplitted = document?.fileName.split('/') || [];
               this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
               this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
-              this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+              await this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
               this.qjTreeProvider?.refresh();
               if (!value.length) {
                 webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
@@ -112,6 +112,9 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
           }
           let total = 0;
           let urisCount = 0;
+          // const largeFileList: string[] = [];
+          const fileSizeLimit = 1000000;
+
           const processedWorkspaces: string[] = [];
           const includePattern: string = getGlobPattern(data.searchFiles);
           const excludePattern: string = data.excludeFiles.length ? getGlobPattern(data.excludeFiles) : '';
@@ -135,12 +138,21 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                         return;
                       }
                       try {
+                        const workspaceUri = vscode.workspace.getWorkspaceFolder(uri);
+                        const splits = uri.fsPath.split(path.sep);
+                        const fileName = splits[splits.length - 1];
+
+                        if (value.byteLength > fileSizeLimit && data.path.includes('//')) {
+                          // largeFileList.push(fileName);
+                          // TODO: find out a way to pause until user acknowledges
+                          webviewView.webview.postMessage({
+                            type: 'warning',
+                            message: `${fileName} is very large. This will take a while`
+                          });
+                        }
+
                         this._runPath(cleanup(value.toString()), data.path, (runResult: tRunPathResult) => {
-                          if (runResult.value.length) {
-                            const workspaceUri = vscode.workspace.getWorkspaceFolder(uri);
-                            const splits = uri.fsPath.split(path.sep);
-                            const fileName = splits[splits.length - 1];
-                            
+                          if (runResult.value.length) { 
                             total += value.length;
                             webviewView.webview.postMessage({
                               type: 'searchResponse',
@@ -179,7 +191,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
             vscode.workspace.openTextDocument(data.filePath)
               .then((document) => {
                 if (!document) {
-                  return postMessage({
+                  return webviewView.webview.postMessage({
                     type: 'Error',
                     message: 'file cannot be found/load'
                   });
@@ -188,7 +200,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
                 vscode.window.showTextDocument(document, vscode.window.tabGroups.activeTabGroup.viewColumn, false);
                 
                 try {
-                  this._runPath(document.getText(), data.queryPath, ({nodes, nodesValue, value}: tRunPathResult) => {
+                  this._runPath(document.getText(), data.queryPath, async ({nodes, nodesValue, value}: tRunPathResult) => {
                     if (nodesValue && nodes) {
                       if (!this._treeView) {
                         this._treeView = vscode.window.createTreeView('query-json-lite.result', {
@@ -198,7 +210,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
 
                       this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
                       this._treeView.description = `${data.workspaceName}/${data.relativePath}`;
-                      this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+                      await this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
                       this.qjTreeProvider?.refresh();
                       if (!value.length) {
                         webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
@@ -223,6 +235,15 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
         }
         case 'change-highlight': {
           this.qjState.setHexValues(data);
+          break;
+        }
+        case 'toggle-highlight': {
+          if (data.value) {
+            
+            this.qjTreeProvider.addDocumentRanges();
+          }
+          this.qjState.enableHighlight(data.value);
+          break;
         }
       }
     });
@@ -267,10 +288,14 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
         <body>
           <div id="content">
             <div class="sticky">
-              <textarea wrap="soft" class="path" placeholder="path"></textarea>
+              <textarea id="pathTextArea" wrap="soft" class="path" placeholder="path"></textarea>
               <ul class="tabs">
-                <li id="defaultMode" class="tab">Query</li>
-                <li id="searchMode" class="tab">Find <sup><i>*beta</i></sup></li>
+                <li id="defaultMode" class="tab">
+                  <div class="icon"><i class="codicon codicon-target" title="Query"></i></div>
+                </li>
+                <li id="searchMode" class="tab">
+                  <div class="icon"><i class="codicon codicon-search-fuzzy" title="Find"></i></div>
+                </li>
               </ul>
               <div id="searchJSON">
                 <div id="searchChevrons">
@@ -350,6 +375,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
             </div>
           </div>
           <div id="highlightContainer" class="footerSticky">
+            <input id="highlightSwitch" type="checkbox"/>
             <input id="colorPicker" type="color" height="40" title="highlight color"/>
             <input id="opacity" type="range" min="0" max="1" step="0.1" title="highlight opacity"/>
           </div>
@@ -374,7 +400,9 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
       </html>`
   }
 
-  private _runPath(text: string, path: string, callback: Function) {    
+  private _runPath(text: string, path: string, callback: Function) {
+    // TODO look at separating this into a new Worker() thread
+    // TODO work out how to cancel query executations mid flight
     const json = JSON.parse(text);
     this.qjState.reset();
     runPath({
@@ -390,7 +418,8 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
     }, { json, outputOptions: { nodes: true } });
   }
 
-  private _displayResult(webviewView: vscode.WebviewView, document: vscode.TextDocument, {nodesValue, nodes, value}: tRunPathResult) {
+
+  private async _displayResult(webviewView: vscode.WebviewView, document: vscode.TextDocument, {nodesValue, nodes, value}: tRunPathResult) {
     if (nodesValue && nodes) {
       if (!this._treeView) {
         this._treeView = vscode.window.createTreeView('query-json-lite.result', {
@@ -401,7 +430,7 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
       const fileNameSplitted = document?.fileName.split('/') || [];
       this._treeView.title = `Query Result${value.length ? `: ${value.length}` : ''}`;
       this._treeView.description = `${fileNameSplitted[fileNameSplitted.length-1]}`
-      this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
+      await this.qjTreeProvider?.update({ nodesValue, nodes, value, document });
       this.qjTreeProvider?.refresh();
       if (!value.length) {
         webviewView.webview.postMessage({type: 'warning', message: 'No result found for the given path expression.'})
@@ -419,11 +448,12 @@ export default class EvaluateJSONProvider implements vscode.WebviewViewProvider 
   }
 
   private _postLoadHighlightColor() {
-    const hexValues = this.qjState.getHexValues();
+    const hexValues = this.qjState.getDocumentHighlightOptions();
     this._view?.webview.postMessage({
-      type: 'load-highlight-color',
+      type: 'load-highlight-options',
       hex: hexValues.hex,
-      hexOpacity: hexValues.hexOpacity
+      hexOpacity: hexValues.hexOpacity,
+      highlightEnabled: hexValues.highlightEnabled
     });
   }
 }

@@ -1,6 +1,11 @@
 # Change Log
 
-## v0.5.0
+## v0.5.1 (2024-12-01)
+- Fixed document highlight bugs
+- Remembers query textarea height
+- Change query/search tabs into icons
+
+## v0.5.0 (2024-10-07)
 - Highlight results in the queried file
 - Update find files to match vscode search look and feel
 
